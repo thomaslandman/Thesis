@@ -60,3 +60,6 @@ configs/config*
 
 # Data
 data/*
+
+# Models
+Dose_Prediction/model/*
