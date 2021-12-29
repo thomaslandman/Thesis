@@ -62,4 +62,4 @@ configs/config*
 data/*
 
 # Models
-Dose_Prediction/model/*
+Dose_Prediction/model/
