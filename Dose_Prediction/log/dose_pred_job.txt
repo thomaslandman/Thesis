@@ -1,0 +1,94 @@
+on Hostname = res-hpc-lkeb03.researchlumc.nl
+on GPU      = 0
+
+@ Sat Dec 11 17:23:39 CET 2021
+
+No model found, start training from beginning
+Training has started
+Epoch 1
+The average training loss in epoch  1 :  34.624
+The average validation loss in epoch  1 :  19.795
+Time since start of training is:  1174 seconds
+Epoch 2
+The average training loss in epoch  2 :  17.143
+The average validation loss in epoch  2 :  18.787
+Time since start of training is:  2278 seconds
+Epoch 3
+The average training loss in epoch  3 :  15.184
+The average validation loss in epoch  3 :  17.005
+Time since start of training is:  3379 seconds
+Epoch 4
+The average training loss in epoch  4 :  13.738
+The average validation loss in epoch  4 :  14.759
+Time since start of training is:  4478 seconds
+Epoch 5
+The average training loss in epoch  5 :  12.602
+The average validation loss in epoch  5 :  13.220
+Time since start of training is:  5580 seconds
+Epoch 6
+The average training loss in epoch  6 :  12.207
+The average validation loss in epoch  6 :  12.910
+Time since start of training is:  6681 seconds
+Epoch 7
+The average training loss in epoch  7 :  11.365
+The average validation loss in epoch  7 :  12.724
+Time since start of training is:  7781 seconds
+Epoch 8
+The average training loss in epoch  8 :  10.726
+The average validation loss in epoch  8 :  12.063
+Time since start of training is:  8876 seconds
+Epoch 9
+The average training loss in epoch  9 :  10.125
+The average validation loss in epoch  9 :  10.604
+Time since start of training is:  9971 seconds
+Epoch 10
+The average training loss in epoch  10 :  9.829
+The average validation loss in epoch  10 :  10.345
+Time since start of training is:  11064 seconds
+Epoch 11
+The average training loss in epoch  11 :  9.335
+The average validation loss in epoch  11 :  10.013
+Time since start of training is:  12158 seconds
+Epoch 12
+The average training loss in epoch  12 :  8.858
+The average validation loss in epoch  12 :  9.432
+Time since start of training is:  13250 seconds
+Epoch 13
+The average training loss in epoch  13 :  8.699
+The average validation loss in epoch  13 :  10.028
+Time since start of training is:  14340 seconds
+Epoch 14
+The average training loss in epoch  14 :  8.394
+The average validation loss in epoch  14 :  9.235
+Time since start of training is:  15430 seconds
+Epoch 15
+The average training loss in epoch  15 :  8.153
+The average validation loss in epoch  15 :  9.983
+Time since start of training is:  16514 seconds
+Epoch 16
+The average training loss in epoch  16 :  7.900
+The average validation loss in epoch  16 :  9.812
+Time since start of training is:  17599 seconds
+Epoch 17
+The average training loss in epoch  17 :  7.580
+The average validation loss in epoch  17 :  10.103
+Time since start of training is:  18742 seconds
+Epoch 18
+The average training loss in epoch  18 :  7.341
+The average validation loss in epoch  18 :  9.652
+Time since start of training is:  20055 seconds
+Epoch 19
+The average training loss in epoch  19 :  7.224
+The average validation loss in epoch  19 :  10.154
+Time since start of training is:  21381 seconds
+Epoch 20
+The average training loss in epoch  20 :  7.259
+The average validation loss in epoch  20 :  9.601
+Time since start of training is:  22700 seconds
+Epoch 21
+The average training loss in epoch  21 :  7.070
+The average validation loss in epoch  21 :  9.095
+Time since start of training is:  24013 seconds
+Epoch 22
+The average training loss in epoch  22 :  6.920
+slurmstepd: error: *** JOB 6383664 ON res-hpc-lkeb03 CANCELLED AT 2021-12-12T00:21:58 ***

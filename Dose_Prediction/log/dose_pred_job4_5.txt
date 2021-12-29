@@ -1,0 +1,33 @@
+on Hostname = res-hpc-lkeb03.researchlumc.nl
+on GPU      = 0
+
+@ Tue Dec  7 11:30:18 CET 2021
+
+No model found, start training from beginning
+Training has started
+The average training loss after the augmentation set  1 :  29.447
+The average training loss after the augmentation set  2 :  19.550
+The average training loss after the augmentation set  3 :  12.477
+The average training loss after the augmentation set  4 :  11.674
+The average training loss after the augmentation set  5 :  20.037
+Epoch 1
+The average training loss in epoch  1 :  23.947
+The average validation loss in epoch  1 :  15.965
+Time since start of training is:  4518 seconds
+Epoch 2
+The average training loss in epoch  2 :  15.738
+The average validation loss in epoch  2 :  13.273
+Time since start of training is:  5724 seconds
+Epoch 3
+The average training loss in epoch  3 :  13.345
+The average validation loss in epoch  3 :  11.745
+Time since start of training is:  6792 seconds
+Epoch 4
+The average training loss in epoch  4 :  12.427
+The average validation loss in epoch  4 :  11.658
+Time since start of training is:  7860 seconds
+Epoch 5
+The average training loss in epoch  5 :  11.537
+The average validation loss in epoch  5 :  11.045
+Time since start of training is:  8968 seconds
+Training is completed in  8968  seconds
