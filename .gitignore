@@ -52,14 +52,14 @@ wheels/
 .idea/
 
 # Experiments
-experiments/*
+MultiTask/experiments/*
 !experiments/.keep
 
 # Configs
-configs/config*
+MultiTask/configs/config*
 
 # Data
-data/*
+MultiTask/data/*
 
 # Models
-Dose_Prediction/model/
+Dose_Prediction/model/*
