@@ -11,6 +11,7 @@ from agents.base import BaseAgent
 from graphs.losses.loss import *
 from graphs.models.regnet import RegNet
 from graphs.models.segnet import SegNet
+from graphs.models.dosenet import DoseNet
 from utils import dataset_niftynet as dset_utils
 from utils.SpatialTransformer import SpatialTransformer
 from utils.model_util import count_parameters
@@ -37,9 +38,11 @@ class stlAgent(BaseAgent):
             self.summary_writer = SummaryWriter(self.args.tensorboard_dir)
             # Create an instance from the data loader
             self.dsets = dset_utils.get_datasets(self.args, self.data_config)
+
             self.dataloaders = {x: DataLoader(self.dsets[x], batch_size=self.args.batch_size,
                                               shuffle=True, num_workers=self.args.num_threads)
                                 for x in self.args.split_set}
+
             # Create an instance from the Model
             if self.args.network == 'Seg':
                 self.model = SegNet(in_channels=len(self.args.input), classes=self.args.num_classes,
@@ -57,8 +60,13 @@ class stlAgent(BaseAgent):
                 self.smooth_loss = GradientSmoothing(energy_type='bending')
                 self.dsc_loss = Dice().to(self.args.device)
                 self.spatial_transform = SpatialTransformer(dim=self.args.num_classes)
+            elif self.args.network == 'Dose':
+                self.mse_loss = nn.MSELoss().to(self.args.device)
+                # can add loss on multiple levels
+                self.model = DoseNet().to(self.args.device)
+
             else:
-                print('Unknown Netowrk')
+                print('Unknown Network')
 
             self.logger.info(self.model)
             self.logger.info(f"Total Trainable Params: {count_parameters(self.model)}")
@@ -125,6 +133,7 @@ class stlAgent(BaseAgent):
             self.current_epoch = epoch
             self.train_one_epoch()
 
+
             if (epoch) % self.args.validation_rate == 0:
                 self.validate()
 
@@ -145,22 +154,24 @@ class stlAgent(BaseAgent):
         running_ncc = 0.
         epoch_samples = 0
 
-        for batch_idx, (fimage, flabel, mimage, mlabel) in enumerate(self.dataloaders['training'], 1):
+        for batch_idx, (fimage, flabel, mimage, mlabel) in enumerate(self.dataloaders['training'], 1):  # add dose to back
             # switch model to training mode, clear gradient accumulators
             self.model.train()
             self.optimizer.zero_grad()
             self.model.zero_grad()
 
-            data_dict = clean_data(fimage, flabel, mimage, mlabel, self.args)
+            data_dict = clean_data(fimage, flabel, mimage, mlabel, self.args) #add dose to back
             nbatches, wsize, nchannels, x, y, z, _ = fimage.size()
 
             # forward pass
-            if len(self.args.input) == 1:
+            if 'Sf' in self.args.input:
+                res = self.model(data_dict['flabel'])
+            elif len(self.args.input) == 1:
                 res = self.model(data_dict['fimage'])
             elif len(self.args.input) == 2 and 'Im' in self.args.input:
-                res = self.model(data_dict['fimage'], data_dict['mimage'])
-            elif len(self.args.input) and 'Sm' in self.args.input:
-                res = self.model(data_dict['fimage'], data_dict['mlabel'])
+                res = self.model(data_dict['fimage'], moving_image=data_dict['mimage'])
+            elif len(self.args.input) == 2 and 'Sm' in self.args.input:
+                res = self.model(data_dict['fimage'], moving_label=data_dict['mlabel'])
             elif len(self.args.input) == 3:
                 res = self.model(data_dict['fimage'], data_dict['mimage'], data_dict['mlabel'])
             else:
@@ -218,6 +229,10 @@ class stlAgent(BaseAgent):
 
                 loss = ncc_loss + self.args.w_bending_energy * smooth_loss
 
+            elif self.args.network == 'Dose':
+                mse_loss = self.mse_loss(data_dict['dose'], res)
+                loss = mse_loss
+
             # backpropagation
             loss.backward()
             # optimization
@@ -226,7 +241,7 @@ class stlAgent(BaseAgent):
             # statistics
             epoch_samples += fimage.size(0)
             running_loss += loss.item() * fimage.size(0)
-            running_dsc_loss += dsc_loss.item() * fimage.size(0)
+            running_dsc_loss += dsc_loss.item() * fimage.size(0)  # ???
             running_dsc += (1.0 - dsc_loss.item()) * fimage.size(0)
             if self.args.network == 'Reg':
                 running_ncc_loss += ncc_loss.item() * fimage.size(0)
@@ -237,7 +252,7 @@ class stlAgent(BaseAgent):
             self.current_iteration += 1
 
         epoch_loss = running_loss / epoch_samples
-        epoch_dsc_loss = running_dsc_loss / epoch_samples
+        epoch_dsc_loss = running_dsc_loss / epoch_samples # veranderd
         epoch_dsc = running_dsc / epoch_samples
         self.summary_writer.add_scalars("Losses/dsc_loss", {'train': epoch_dsc_loss}, self.current_epoch)
         self.summary_writer.add_scalars("Losses/total_loss", {'train': epoch_loss}, self.current_epoch)
@@ -256,6 +271,8 @@ class stlAgent(BaseAgent):
             self.summary_writer.add_scalars("DVF/bending_energy", {'train': epoch_smooth_loss}, self.current_epoch)
             self.logger.info('{} totalLoss: {:.4f} dscLoss: {:.4f} nccLoss: {:.4f} dvfLoss: {:.4f} dsc: {:.4f} ncc: {:.4f}'.
                 format('Training', epoch_loss, epoch_dsc_loss, epoch_ncc_loss, epoch_smooth_loss, epoch_dsc, epoch_ncc))
+        elif self.args.network == 'Dose':
+            self.logger.info('{} totalLoss: {:.4f}'.format('Training', epoch_loss))
 
 
 
@@ -276,16 +293,18 @@ class stlAgent(BaseAgent):
 
             # Iterate over data
             for batch_idx, (fimage, flabel, mimage, mlabel) in enumerate(self.dataloaders['validation'], 1):
-                data_dict = clean_data(fimage, flabel, mimage, mlabel, self.args)
+                data_dict = clean_data(fimage, flabel, mimage, mlabel, self.args) # ??? add dose
                 nbatches, wsize, nchannels, x, y, z, _ = fimage.size()
 
                 # forward pass
-                if len(self.args.input) == 1:
+                if 'Sf' in self.args.input:
+                    res = self.model(data_dict['flabel'])
+                elif len(self.args.input) == 1:
                     res = self.model(data_dict['fimage'])
                 elif len(self.args.input) == 2 and 'Im' in self.args.input:
-                    res = self.model(data_dict['fimage'], data_dict['mimage'])
+                    res = self.model(data_dict['fimage'], moving_image=data_dict['mimage'])
                 elif len(self.args.input) == 2 and 'Sm' in self.args.input:
-                    res = self.model(data_dict['fimage'], data_dict['mlabel'])
+                    res = self.model(data_dict['fimage'], moving_label=data_dict['mlabel'])
                 elif len(self.args.input) == 3:
                     res = self.model(data_dict['fimage'], data_dict['mimage'], data_dict['mlabel'])
                 else:
@@ -345,11 +364,14 @@ class stlAgent(BaseAgent):
 
                     loss = ncc_loss + self.args.w_bending_energy * smooth_loss
 
+                elif self.args.network == 'Dose':
+                    mse_loss = self.mse_loss(data_dict['dose'], res)
+                    loss = mse_loss
 
                 # statistics
                 epoch_samples += fimage.size(0)
                 running_loss += loss.item() * fimage.size(0)
-                running_dsc_loss += dsc_loss.item() * fimage.size(0)
+                running_dsc_loss += dsc_loss.item() * fimage.size(0)  # ???
                 running_dsc += (1.0 - dsc_loss.item()) * fimage.size(0)
                 if self.args.network == 'Reg':
                     running_ncc_loss += ncc_loss.item() * fimage.size(0)
@@ -360,7 +382,7 @@ class stlAgent(BaseAgent):
                 self.current_iteration += 1
 
             epoch_loss = running_loss / epoch_samples
-            epoch_dsc_loss = running_dsc_loss / epoch_samples
+            epoch_dsc_loss = running_dsc_loss / epoch_samples # veranderd
             epoch_dsc = running_dsc / epoch_samples
             self.summary_writer.add_scalars("Losses/dsc_loss", {'train': epoch_dsc_loss}, self.current_epoch)
             self.summary_writer.add_scalars("Losses/total_loss", {'train': epoch_loss}, self.current_epoch)
@@ -380,6 +402,9 @@ class stlAgent(BaseAgent):
 
                 self.logger.info('{} totalLoss: {:.4f} dscLoss: {:.4f} nccLoss: {:.4f} dvfLoss: {:.4f} dsc: {:.4f} ncc: {:.4f}'.
                     format('validation', epoch_loss, epoch_dsc_loss, epoch_ncc_loss, epoch_smooth_loss, epoch_dsc, epoch_ncc))
+
+            elif self.args.network == 'Dose':
+                self.logger.info('{} totalLoss: {:.4f}'.format('validation', epoch_loss))
 
     def inference(self):
 
@@ -447,19 +472,19 @@ class stlAgent(BaseAgent):
                     mimage_window = mimage_padded[tuple(slicer)]
                     mlabel_window = mlabel_padded[tuple(slicer)]
 
-                    fimage_window = torch.tensor(np.transpose(fimage_window, (0, 4, 1, 2, 3))).to(self.args.device) #BxCxDxWxH
+                    fimage_window = torch.tensor(np.transpose(fimage_window, (0, 4, 1, 2, 3))).to(self.args.device)  #BxCxDxWxH
                     mimage_window = torch.tensor(np.transpose(mimage_window, (0, 4, 1, 2, 3))).to(self.args.device)  # BxCxDxWxH
                     mlabel_window = torch.tensor(np.transpose(mlabel_window, (0, 4, 1, 2, 3))).to(self.args.device)  # BxCxDxWxH
 
                     with torch.no_grad():
                         # forward pass
-                        if self.args.in_channels == 1:
+                        if len(self.args.input) == 1:
                             res = self.model(fimage_window)
-                        elif self.args.in_channels == 2 and 'Im' in self.args.input:
+                        elif len(self.args.input) == 2 and 'Im' in self.args.input:
                             res = self.model(fimage_window, mimage_window)
-                        elif self.args.in_channels == 2 and 'Sm' in self.args.input:
-                            res = self.model(fimage_window, mimage_window)
-                        elif self.args.in_channels == 3:
+                        elif len(self.args.input) == 2 and 'Sm' in self.args.input:
+                            res = self.model(fimage_window, moving_label=mlabel_window)
+                        elif len(self.args.input) == 3:
                             res = self.model(fimage_window, mimage_window, mlabel_window)
                         else:
                             self.logger.error(self.args.input, "wrong input")
@@ -472,17 +497,18 @@ class stlAgent(BaseAgent):
                     elif self.args.network == 'Reg':
                         mimage_window_high = resize_image_mlvl(self.args, mimage_window, 0)
                         mlabel_window_high = resize_image_mlvl(self.args, mlabel_window, 0)
-                        mimage_high_out = self.spatial_transform(mimage_window_high, res['dvf_high'], mode='trilinear')
+                        mimage_high_out = self.spatial_transform(mimage_window_high, res['dvf_high'], mode='bilinear') # ???
                         mlabel_high_out = self.spatial_transform(mlabel_window_high, res['dvf_high'], mode='nearest')
                         out_fimage_dummies[tuple(out_slicer)] = np.transpose(mimage_high_out.cpu().numpy(), (0, 2, 3, 4, 1)) #BxDxWxHxC
-                        out_dvf_dummies[tuple(out_slicer)] = res['dvf_high'].cpu().numpy() #BxDxWxHxC
-                        out_label_dummies[tuple(out_slicer)] = np.transpose(mlabel_high_out.cpu().numpy(),
-                                                                             (0, 2, 3, 4, 1))  # BxDxWxHxC
+                        out_dvf_dummies[tuple(out_slicer)] = np.transpose(res['dvf_high'].cpu().numpy(), (0, 2, 3, 4, 1))  #BxDxWxHxC
+                        out_label_dummies[tuple(out_slicer)] = np.transpose(mlabel_high_out.cpu().numpy(), (0, 2, 3, 4, 1))  # BxDxWxHxC
 
                     if done:
                         break
 
-                save_dir = os.path.join(self.args.prediction_dir, dataset, inference_cases[i].split('/')[-4],
+                # here under self.args.prediction_dir ???
+
+                save_dir = os.path.join(self.args.output_dir, dataset, inference_cases[i].split('/')[-4],
                                         inference_cases[i].split('/')[-3])
                 if not os.path.exists(save_dir):
                     os.makedirs(save_dir)
@@ -492,19 +518,19 @@ class stlAgent(BaseAgent):
 
                 flabel_itk = sitk.GetImageFromArray(np.squeeze(out_label_dummies.astype(np.uint8)))
                 flabel_itk.SetOrigin(im_itk.GetOrigin())
-                flabel_itk.SetSpacing([1., 1., 1.])
-                # flabel_itk.SetSpacing(im_itk.GetSpacing())
+                # flabel_itk.SetSpacing([1., 1., 1.])
+                flabel_itk.SetSpacing(im_itk.GetSpacing())
                 flabel_itk.SetDirection(im_itk.GetDirection())
 
-                if self.args.network == 'Reg':
+                if self.args.network == 'Seg':  # ???
                     sitk.WriteImage(flabel_itk, os.path.join(save_dir, 'Segmentation.mha'))
 
                 elif self.args.network == 'Reg':
 
                     fimage_itk = sitk.GetImageFromArray(np.squeeze(out_fimage_dummies.astype(np.int16)))
                     fimage_itk.SetOrigin(im_itk.GetOrigin())
-                    fimage_itk.SetSpacing([1., 1., 1.])
-                    # fimage_itk.SetSpacing(im_itk.GetSpacing())
+                    # fimage_itk.SetSpacing([1., 1., 1.])
+                    fimage_itk.SetSpacing(im_itk.GetSpacing())          
                     fimage_itk.SetDirection(im_itk.GetDirection())
 
                     dvf_itk = sitk.GetImageFromArray(np.squeeze(out_dvf_dummies), isVector=True)
@@ -527,7 +553,7 @@ class stlAgent(BaseAgent):
         Finalize all the operations of the 2 Main classes of the process the operator and the data loader
         :return:
         """
-        if self.args.debug or self.args.mode != 'train':
+        if self.args.is_debug or self.args.mode != 'train':
             pass
         else:
             self.logger.info("Please wait while finalizing the operation.. Thank you")

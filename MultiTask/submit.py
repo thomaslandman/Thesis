@@ -37,13 +37,14 @@ experiments_dict['registration_b'] ={'model_name':'Reg', 'task':'Single-Task', '
                                      'input':'If_Im_Sm', 'task_ids': ['reg'], 'num_featurmaps': [23, 45, 91], 'num_classes':3}
 
 
-exp = experiments_dict['segmentation_a']
+exp = experiments_dict['registration_b']
 exp['is_debug'] = False
+is_local = False
 exp['mode'] = 'train' #['train', 'inference', 'eval']
 
-base_json_script = '/exports/lkeb-hpc/mseelmahdy/JRS-MTL/configs/base_args.json'
-script_address = '/exports/lkeb-hpc/mseelmahdy/JRS-MTL/main.py'
-root_log_path = os.path.join('/exports/lkeb-hpc/mseelmahdy/JRS-MTL/experiments', exp['task'])
+base_json_script = '/exports/lkeb-hpc/tlandman/Thesis/MultiTask/configs/base_args.json'
+script_address = '/exports/lkeb-hpc/tlandman/Thesis/MultiTask/main.py'
+root_log_path = os.path.join('/exports/lkeb-hpc/tlandman/Thesis/MultiTask/experiments', exp['task'])
 
 if exp['task'] == 'Single-Task':
     exp_name = f"{exp['model_name']}_input_{exp['input']}"
@@ -52,7 +53,13 @@ elif exp['task'] == 'Multi-Task':
 if exp['is_debug']:
     exp_name = f'{exp_name}_debug'
 
-
 config = process_config_gen(base_json_script, exp_name, exp)
+
 json_script = os.path.join(config.log_dir)
-submit_job(exp_name, script_address, setting=setting, root_log_path=root_log_path, mode=exp['mode'], json_script=json_script)
+if is_local == False:
+    submit_job(exp_name, script_address, setting=setting, root_log_path=root_log_path, mode=exp['mode'], json_script=json_script)
+if is_local == True:
+    mode=exp['mode']
+    text = 'source /exports/lkeb-hpc/mseelmahdy/fastMRI-env/bin/activate' '\n'
+    text = text + 'python ' + str(script_address) + ' ' + os.path.join(json_script, f'args_{mode}.json')
+    os.system(text)

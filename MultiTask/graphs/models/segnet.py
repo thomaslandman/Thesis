@@ -46,9 +46,9 @@ class SegNet(nn.Module):
 
         input_image = fixed_image
         if moving_image is not None:
-            input_image = torch.unsqueeze(torch.cat((input_image, moving_image), dim=1), 0)  # (n, 2, d, h, w)
+            input_image = torch.cat((input_image, moving_image), dim=1)  # (n, 2, d, h, w)
         if moving_label is not None:
-            input_image = torch.unsqueeze(torch.cat((input_image, moving_label), dim=1), 0)  # (n, 2, d, h, w) or (n, 3, d, h, w)
+            input_image = torch.cat((input_image, moving_label), dim=1)  # (n, 2, d, h, w) or (n, 3, d, h, w)
 
         logits_list = self.unet(input_image)
         # probs_list = [F.softmax(x, dim=1) for x in logits_list]

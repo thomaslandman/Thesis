@@ -10,6 +10,7 @@ from pprint import pprint
 import tensorflow as tf
 import torch
 from easydict import EasyDict
+import numpy as np
 
 from utils.misc import create_dirs
 
@@ -36,7 +37,7 @@ def get_config_from_json(json_file):
     :param json_file: the path of the config file
     :return: config(namespace), config(dictionary)
     """
-
+    print(json_file)
     # parse the configurations from the config json file provided
     with open(json_file, 'r') as config_file:
         try:
@@ -80,7 +81,7 @@ def process_config(json_file):
     if config.deterministic:
         random.seed(config.seed)
         torch.manual_seed(config.seed)
-        tf.random.set_random_seed(config.seed)
+        # tf.random.set_random_seed(config.seed)
         # np.random.seed(config.seed)
     if config.reproducible:
         torch.backends.cudnn.deterministic = True
@@ -166,11 +167,10 @@ def process_config_gen(json_file, exp_name, exp_dict):
     # get working device
     config.device = str(get_device())
     config.apex_available = apex_check()
-
     if config.deterministic:
         random.seed(config.seed)
         torch.manual_seed(config.seed)
-        tf.random.set_random_seed(config.seed)
+        # tf.random.set_random_seed(config.seed)
         # np.random.seed(config.seed)
     if config.reproducible:
         torch.backends.cudnn.deterministic = True

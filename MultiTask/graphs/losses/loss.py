@@ -105,12 +105,13 @@ class GradientSmoothing(nn.Module):
             dTdxz = gradient_txyz(dTdx, gradient_dz)
             return torch.mean(dTdxx ** 2 + dTdyy ** 2 + dTdzz ** 2 + 2 * dTdxy ** 2 + 2 * dTdxz ** 2 + 2 * dTdyz ** 2)
 
+        dvf_copy = dvf.clone().permute(0, 2, 3, 4, 1)
         if self.energy_type == 'bending':
-            energy = compute_bending_energy(dvf)
+            energy = compute_bending_energy(dvf_copy)
         elif self.energy_type == 'gradient-l2':
-            energy = compute_gradient_norm(dvf)
+            energy = compute_gradient_norm(dvf_copy)
         elif self.energy_type == 'gradient-l1':
-            energy = compute_gradient_norm(dvf, flag_l1=True)
+            energy = compute_gradient_norm(dvf_copy, flag_l1=True)
         else:
             raise Exception('Not recognised local regulariser!')
 
