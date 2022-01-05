@@ -87,15 +87,19 @@ def resampler_sitk_Reg(image_sitk, spacing=[1.0, 1.0, 1.0], default_pixel_value=
     return resampled_sitk
 
 
-def DSC_MSD_HD95_Seg(groundtruth_image_itk, predicted_image, num_of_components,resample_flag=True, resample_spacing=[1.0, 1.0, 1.0]):
+def DSC_MSD_HD95_Seg(groundtruth_image_itk, predicted_image, num_of_components, resample_flag=False, resample_spacing=[1.0, 1.0, 1.0]):
+    # set resample flag to False
+
     if resample_flag:
         groundtruth_image_itk = resampler_sitk_Seg(image_sitk=groundtruth_image_itk, predicted_image=predicted_image,
                                                spacing=resample_spacing,
                                                default_pixel_value=0,
                                                interpolator=sitk.sitkNearestNeighbor, dimension=3, rnd=3)
 
-
+    predicted_image.SetOrigin(groundtruth_image_itk.GetOrigin())
+    predicted_image.SetSpacing(groundtruth_image_itk.GetSpacing())
     groundtruth_image_itk = sitk.Cast(groundtruth_image_itk, sitk.sitkUInt8)
+
     # predicted_image = sitk.Cast(predicted_image, sitk.sitkUInt8)
     size_diff = np.sum(np.subtract(groundtruth_image_itk.GetSize(), predicted_image.GetSize()))
 
@@ -240,6 +244,9 @@ def DSC_MSD_HD95_Reg(groundtruth_image_itk, predicted_image, resample_flag=True,
         groundtruth_image_itk = resampler_sitk_Reg(image_sitk=groundtruth_image_itk, spacing=resample_spacing,
                                                 default_pixel_value=0,
                                                 interpolator=sitk.sitkNearestNeighbor, dimension=3, rnd=3)
+
+    predicted_image.SetOrigin(groundtruth_image_itk.GetOrigin())
+    predicted_image.SetSpacing(groundtruth_image_itk.GetSpacing())
 
     groundtruth_image_itk = sitk.Cast(groundtruth_image_itk, sitk.sitkUInt8)
     predicted_image = sitk.Cast(predicted_image, sitk.sitkUInt8)

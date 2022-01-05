@@ -28,10 +28,9 @@ class evaluation(object):
             files_list = self.partitioner.get_file_list(partition, 'fixed_segmentation')['fixed_segmentation'].values.tolist()
 
 
-
             for j in range(len(self.args.label_name)):
 
-                writer = pd.ExcelWriter(os.path.join(self.args.prediction_dir, dataset, self.args.excel_name[j]),
+                writer = pd.ExcelWriter(os.path.join(self.args.output_dir, dataset, self.args.excel_name[j]),
                                         engine='xlsxwriter')
 
                 # refresh the values
@@ -54,7 +53,7 @@ class evaluation(object):
                 self.patient_arr = []
                 self.scan_arr = []
 
-                if os.path.exists(os.path.join(self.args.prediction_dir, dataset, self.args.excel_name[j])):
+                if os.path.exists(os.path.join(self.args.output_dir, dataset, self.args.excel_name[j])):
                     pass
                 else:
 
@@ -72,7 +71,7 @@ class evaluation(object):
                         groundtruth_prostate = sitk.BinaryThreshold(groundtruth_segmentation, lowerThreshold=4,
                                                                     upperThreshold=4, insideValue=1, outsideValue=0)
 
-                        predicted_segmentation = sitk.ReadImage((os.path.join(self.args.prediction_dir, dataset,
+                        predicted_segmentation = sitk.ReadImage((os.path.join(self.args.output_dir, dataset,
                                                                               patient_name, visit_name, self.args.label_name[j])))
 
 

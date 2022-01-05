@@ -7,7 +7,7 @@ setting = dict()
 setting['cluster_manager'] = 'Slurm'
 setting['NumberOfGPU'] = 1
 setting['cluster_MemPerCPU'] = 7500
-setting['cluster_NumberOfCPU'] = 7            # Number of CPU per job
+setting['cluster_NumberOfCPU'] = 7           # Number of CPU per job
 setting['cluster_NodeList'] = 'res-hpc-lkeb03' # ['res-hpc-gpu01','res-hpc-gpu02','res-hpc-lkeb03',---,'res-hpc-lkeb07']
 
 
@@ -37,10 +37,10 @@ experiments_dict['registration_b'] ={'model_name':'Reg', 'task':'Single-Task', '
                                      'input':'If_Im_Sm', 'task_ids': ['reg'], 'num_featurmaps': [23, 45, 91], 'num_classes':3}
 
 
-exp = experiments_dict['registration_b']
+exp = experiments_dict['segmentation_b']
 exp['is_debug'] = False
 is_local = False
-exp['mode'] = 'train' #['train', 'inference', 'eval']
+exp['mode'] = 'eval'       #['train', 'inference', 'eval']
 
 base_json_script = '/exports/lkeb-hpc/tlandman/Thesis/MultiTask/configs/base_args.json'
 script_address = '/exports/lkeb-hpc/tlandman/Thesis/MultiTask/main.py'
