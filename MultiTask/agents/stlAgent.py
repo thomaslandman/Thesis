@@ -11,7 +11,7 @@ from agents.base import BaseAgent
 from graphs.losses.loss import *
 from graphs.models.regnet import RegNet
 from graphs.models.segnet import SegNet
-from graphs.models.dosenet import DoseNet
+from graphs.models.dose_unet import DoseNet
 from utils import dataset_niftynet as dset_utils
 from utils.SpatialTransformer import SpatialTransformer
 from utils.model_util import count_parameters
@@ -51,6 +51,7 @@ class stlAgent(BaseAgent):
                 # Create instance from the loss
                 # self.dsc_loss = Multi_DSC_Loss().to(self.args.device)
                 self.dsc_loss = Dice().to(self.args.device)
+
             elif self.args.network == 'Reg':
                 self.model = RegNet(in_channels=len(self.args.input), dim=self.args.num_classes,
                                     depth=self.args.depth, initial_channels=self.args.initial_channels,
@@ -60,10 +61,14 @@ class stlAgent(BaseAgent):
                 self.smooth_loss = GradientSmoothing(energy_type='bending')
                 self.dsc_loss = Dice().to(self.args.device)
                 self.spatial_transform = SpatialTransformer(dim=self.args.num_classes)
+
             elif self.args.network == 'Dose':
+                self.model = DoseNet(in_channels=4, classes=1,
+                                     depth=self.args.depth, initial_channels=self.args.initial_channels,
+                                     channels_list=self.args.num_featurmaps).to(self.args.device)
                 self.mse_loss = nn.MSELoss().to(self.args.device)
                 # can add loss on multiple levels
-                self.model = DoseNet().to(self.args.device)
+
 
             else:
                 print('Unknown Network')
@@ -154,13 +159,13 @@ class stlAgent(BaseAgent):
         running_ncc = 0.
         epoch_samples = 0
 
-        for batch_idx, (fimage, flabel, mimage, mlabel) in enumerate(self.dataloaders['training'], 1):  # add dose to back
+        for batch_idx, (fimage, flabel, mimage, mlabel, dose) in enumerate(self.dataloaders['training'], 1):  # add dose to back
             # switch model to training mode, clear gradient accumulators
             self.model.train()
             self.optimizer.zero_grad()
             self.model.zero_grad()
 
-            data_dict = clean_data(fimage, flabel, mimage, mlabel, self.args) #add dose to back
+            data_dict = clean_data(fimage, flabel, mimage, mlabel, dose, self.args) #add dose to back
             nbatches, wsize, nchannels, x, y, z, _ = fimage.size()
 
             # forward pass

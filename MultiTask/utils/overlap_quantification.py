@@ -238,7 +238,7 @@ def DSC_MSD_HD95_Seg(groundtruth_image_itk, predicted_image, num_of_components, 
     return dice, msd, hd_percentile, jaccard, vol_similarity
 
 
-def DSC_MSD_HD95_Reg(groundtruth_image_itk, predicted_image, resample_flag=True, resample_spacing=[1.0, 1.0, 1.0]):
+def DSC_MSD_HD95_Reg(groundtruth_image_itk, predicted_image, resample_flag=False, resample_spacing=[1.0, 1.0, 1.0]):
 
     if resample_flag:
         groundtruth_image_itk = resampler_sitk_Reg(image_sitk=groundtruth_image_itk, spacing=resample_spacing,

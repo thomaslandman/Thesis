@@ -27,7 +27,7 @@ class DoseNet(nn.Module):
         super().__init__()
         self.num_Classes = classes
         self.channels_list = channels_list
-        assert len(channels_list) == depth
+        # assert len(channels_list) == depth
 
         self.unet = unet.UNet(in_channels=in_channels, out_channels=classes, depth=depth,
                               initial_channels=initial_channels, channels_list= channels_list)
