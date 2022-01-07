@@ -9,12 +9,12 @@ import csv
 
 patient_list = []
 visit_date_list = []
-with open("/exports/lkeb-hpc/tlandman/Patient_Data/visits.csv") as csv_file:
+with open("/exports/lkeb-hpc/tlandman/Data/visit_dates.csv") as csv_file:
     csv_reader = csv.reader(csv_file, delimiter=',')
     for row in csv_reader:
         patient_list.append(str(row[0]))
         visit_date_list.append(str(row[1]))
-dir_path = "/exports/lkeb-hpc/tlandman/Patient_Dose/"
+dir_path = "/exports/lkeb-hpc/tlandman/Data/"
 for scanID in range(len(visit_date_list)):
     data_path = os.path.join(dir_path, patient_list[scanID], visit_date_list[scanID])
     old_dose_path = os.path.join(data_path, 'Dose/RTDose_4_physicalDose.dcm')
