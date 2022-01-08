@@ -36,11 +36,13 @@ experiments_dict['registration_a'] ={'model_name':'Reg', 'task':'Single-Task', '
 experiments_dict['registration_b'] ={'model_name':'Reg', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Reg',
                                      'input':'If_Im_Sm', 'task_ids': ['reg'], 'num_featurmaps': [23, 45, 91], 'num_classes':3}
 
+experiments_dict['doseprediction_a'] ={'model_name':'Dose', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
+                                     'input':'Sf', 'task_ids': ['dose'], 'num_featurmaps': [23, 45, 91], 'num_classes':3}
 
-exp = experiments_dict['segmentation_b']
-exp['is_debug'] = False
+exp = experiments_dict['doseprediction_a']
+exp['is_debug'] = True
 is_local = False
-exp['mode'] = 'eval'       #['train', 'inference', 'eval']
+exp['mode'] = 'train'       #['train', 'inference', 'eval']
 
 base_json_script = '/exports/lkeb-hpc/tlandman/Thesis/MultiTask/configs/base_args.json'
 script_address = '/exports/lkeb-hpc/tlandman/Thesis/MultiTask/main.py'
