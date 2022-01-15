@@ -63,11 +63,10 @@ class stlAgent(BaseAgent):
                 self.spatial_transform = SpatialTransformer(dim=self.args.num_classes)
 
             elif self.args.network == 'Dose':
-                self.model = DoseNet(in_channels=4, classes=1,
+                self.model = DoseNet(in_channels=1, classes=1,
                                      depth=self.args.depth, initial_channels=self.args.initial_channels,
                                      channels_list=self.args.num_featurmaps).to(self.args.device)
                 self.mse_loss = nn.MSELoss().to(self.args.device)
-                # can add loss on multiple levels
 
 
             else:
@@ -159,13 +158,13 @@ class stlAgent(BaseAgent):
         running_ncc = 0.
         epoch_samples = 0
 
-        for batch_idx, (fimage, flabel, mimage, mlabel, dose) in enumerate(self.dataloaders['training'], 1):  # add dose to back
+        for batch_idx, (fimage, flabel, fdose, mimage, mlabel) in enumerate(self.dataloaders['training'], 1):  # add dose to back
             # switch model to training mode, clear gradient accumulators
             self.model.train()
             self.optimizer.zero_grad()
             self.model.zero_grad()
 
-            data_dict = clean_data(fimage, flabel, mimage, mlabel, dose, self.args) #add dose to back
+            data_dict = clean_data(fimage, flabel, fdose, mimage, mlabel, self.args) #add dose to back
             nbatches, wsize, nchannels, x, y, z, _ = fimage.size()
 
             # forward pass
@@ -235,7 +234,13 @@ class stlAgent(BaseAgent):
                 loss = ncc_loss + self.args.w_bending_energy * smooth_loss
 
             elif self.args.network == 'Dose':
-                mse_loss = self.mse_loss(data_dict['dose'], res)
+                mse_loss_high = self.mse_loss(data_dict['fdose_high'], res['logits_high'])
+                mse_loss_mid  = self.mse_loss(data_dict['fdose_mid'] , res['logits_mid'])
+                mse_loss_low  = self.mse_loss(data_dict['fdose_low'] , res['logits_low'])
+
+                mse_loss = self.args.level_weights[0] * mse_loss_high + \
+                           self.args.level_weights[1] * mse_loss_mid + \
+                           self.args.level_weights[2] * mse_loss_low
                 loss = mse_loss
 
             # backpropagation

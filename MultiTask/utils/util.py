@@ -49,11 +49,12 @@ def resize_image_mlvl(args, image, level):
             (args.mlvl_borders[level]):(args.patch_size[2] - args.mlvl_borders[level])]) \
             [:, :, ::args.mlvl_strides[level], ::args.mlvl_strides[level], ::args.mlvl_strides[level]]
 
-def clean_data(fimage, flabel, mimage, mlabel, args):
+def clean_data(fimage, flabel, fdose, mimage, mlabel, args):
     # format the input images in the right format for pytorch model
     nbatches, wsize, nchannels, x, y, z, _ = fimage.size()
     fimage = fimage.view(nbatches * wsize, nchannels, x, y, z).to(args.device)  # (n, 1, d, w, h)
     flabel = flabel.view(nbatches * wsize, nchannels, x, y, z).to(args.device)
+    fdose = fdose.view(nbatches * wsize, nchannels, x, y, z).to(args.device)
     mimage = mimage.view(nbatches * wsize, nchannels, x, y, z).to(args.device)
     mlabel = mlabel.view(nbatches * wsize, nchannels, x, y, z).to(args.device)
 
@@ -69,6 +70,7 @@ def clean_data(fimage, flabel, mimage, mlabel, args):
     # resize the images for different resolutions
     fimage = fimage.to(args.device)  # size B*C*D*W,H
     flabel = flabel.to(args.device).float()
+    fdose  = fdose.to(args.device)
     mimage = mimage.to(args.device)  # size B*C*D*W,H
     mlabel = mlabel.to(args.device).float()
 
@@ -79,6 +81,10 @@ def clean_data(fimage, flabel, mimage, mlabel, args):
     fimage_high = resize_image_mlvl(args, fimage, 0)
     fimage_mid = resize_image_mlvl(args, fimage, 1)
     fimage_low = resize_image_mlvl(args, fimage, 2)
+
+    fdose_high = resize_image_mlvl(args, fdose, 0)
+    fdose_mid = resize_image_mlvl(args, fdose, 1)
+    fdose_low = resize_image_mlvl(args, fdose, 2)
 
     mlabel_high = resize_image_mlvl(args, mlabel, 0)
     mlabel_mid = resize_image_mlvl(args, mlabel, 1)
@@ -97,9 +103,10 @@ def clean_data(fimage, flabel, mimage, mlabel, args):
     mlabel_low_hot = torch.eye(args.num_classes_seg)[mlabel_low.squeeze(1).long()]
     mlabel_low_hot = mlabel_low_hot.permute(0, 4, 1, 2, 3).float().to(args.device)
 
-    data_dict = {'fimage': fimage, 'mimage': mimage, 'mlabel': mlabel,
+    data_dict = {'fimage': fimage, 'flabel': flabel, 'fdose': fdose, 'mimage': mimage, 'mlabel': mlabel,
+                 'fimage_high': fimage_high, 'fimage_mid': fimage_mid, 'fimage_low': fimage_low,
                  'flabel_high':flabel_high, 'flabel_mid':flabel_mid, 'flabel_low':flabel_low,
-                 'fimage_high':fimage_high, 'fimage_mid':fimage_mid, 'fimage_low':fimage_low,
+                 'fdose_high':fdose_high, 'fdose_mid':fdose_mid, 'fdose_low':fdose_low,
                  'mlabel_high':mlabel_high, 'mlabel_mid':mlabel_mid, 'mlabel_low':mlabel_low,
                  'mimage_high':mimage_high, 'mimage_mid':mimage_mid, 'mimage_low':mimage_low,
                  'mlabel_high_hot':mlabel_high_hot, 'mlabel_mid_hot':mlabel_mid_hot, 'mlabel_low_hot':mlabel_low_hot}

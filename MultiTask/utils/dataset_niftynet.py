@@ -31,14 +31,16 @@ class DatasetNiftySampler(Dataset):
         # Transpose to PyTorch format
         fimage = np.transpose(data['fixed_image'], (0, 5, 1, 2, 3, 4))
         flabel = np.transpose(data['fixed_segmentation'], (0, 5, 1, 2, 3, 4))
+        fdose  = np.transpose(data['fixed_dose'], (0, 5, 1, 2, 3, 4))
         mimage = np.transpose(data['moving_image'], (0, 5, 1, 2, 3, 4))
         mlabel = np.transpose(data['moving_segmentation'], (0, 5, 1, 2, 3, 4))
         fimage = torch.from_numpy(fimage).float()
         flabel = torch.from_numpy(flabel).float()
         mimage = torch.from_numpy(mimage).float()
         mlabel = torch.from_numpy(mlabel).float()
+        fdose  = torch.from_numpy(fdose).float()
 
-        return fimage, flabel, mimage, mlabel
+        return fimage, flabel, fdose, mimage, mlabel
 
     def __len__(self):
         return len(self.sampler.reader.output_list)
@@ -74,6 +76,10 @@ def set_dataParam(args, config):
                                                            pixdim=args.voxel_dim, interp_order=0)
     if 'fixed_gtv' in args.input_list:
         data_param['fixed_gtv'] = ParserNamespace(csv_file=config.csv_fixed_segmentation_gtv,
+                                                           spatial_window_size=args.patch_size,
+                                                           pixdim=args.voxel_dim, interp_order=0)
+    if 'fixed_dose' in args.input_list:
+        data_param['fixed_dose'] = ParserNamespace(csv_file=config.csv_fixed_dose,
                                                            spatial_window_size=args.patch_size,
                                                            pixdim=args.voxel_dim, interp_order=0)
 
@@ -159,6 +165,7 @@ def get_sampler(args, image_reader, phase):
 def get_datasets(args, config):
     # Dictionary with data parameters for NiftyNet Reader
     data_param = set_dataParam(args, config)
+    # print(data_param)
     image_sets_partitioner = ImageSetsPartitioner().initialise(data_param=data_param,
                                                                data_split_file=config.csv_split_file,
                                                                new_partition=False)

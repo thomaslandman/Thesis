@@ -1,8 +1,8 @@
 """
 The project template was adopted from the github repo: https://github.com/moemen95/Pytorch-Project-Template
 
-__author__ = "Mohamed S. Elmahdy"
-__paper__ = "https://arxiv.org/abs/2105.01844"
+__author__ = "Thomas Landman"
+
 
 Main
 -Capture the config file
