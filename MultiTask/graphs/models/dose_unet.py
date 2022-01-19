@@ -33,7 +33,7 @@ class DoseNet(nn.Module):
                               initial_channels=initial_channels, channels_list= channels_list)
 
 
-    def forward(self, fixed_segmentation):
+    def forward(self, fixed_segmentation, fixed_image=None):
         '''
         Parameters
         ----------
@@ -44,8 +44,10 @@ class DoseNet(nn.Module):
         logits : (n, classes, d, h, w)
             logits of the images.
         '''
-
-        input_image = torch.cat((fixed_segmentation), dim=1) # (n, 1, d, h, w)
+        if fixed_image == None:
+            input_image = fixed_segmentation
+        else:
+            input_image = torch.cat((fixed_segmentation, fixed_image), dim=1) # (n, 1, d, h, w)
 
         logits_list = self.unet(input_image)
         # probs_list = [F.softmax(x, dim=1) for x in logits_list]

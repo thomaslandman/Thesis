@@ -170,6 +170,8 @@ class stlAgent(BaseAgent):
             # forward pass
             if 'Sf' in self.args.input:
                 res = self.model(data_dict['flabel'])
+            elif 'Sf' in self.args.input and len(self.args.input) == 2:
+                res = self.model(data_dict['flabel'], data_dict['fimage'])
             elif len(self.args.input) == 1:
                 res = self.model(data_dict['fimage'])
             elif len(self.args.input) == 2 and 'Im' in self.args.input:
@@ -251,8 +253,9 @@ class stlAgent(BaseAgent):
             # statistics
             epoch_samples += fimage.size(0)
             running_loss += loss.item() * fimage.size(0)
-            running_dsc_loss += dsc_loss.item() * fimage.size(0)  # ???
-            running_dsc += (1.0 - dsc_loss.item()) * fimage.size(0)
+            if self.args.network == 'Reg' or self.args.network == 'Seg':
+                running_dsc_loss += dsc_loss.item() * fimage.size(0)
+                running_dsc += (1.0 - dsc_loss.item()) * fimage.size(0)
             if self.args.network == 'Reg':
                 running_ncc_loss += ncc_loss.item() * fimage.size(0)
                 running_ncc += (1.0 - ncc_loss.item()) * fimage.size(0)
@@ -262,11 +265,12 @@ class stlAgent(BaseAgent):
             self.current_iteration += 1
 
         epoch_loss = running_loss / epoch_samples
-        epoch_dsc_loss = running_dsc_loss / epoch_samples # veranderd
-        epoch_dsc = running_dsc / epoch_samples
-        self.summary_writer.add_scalars("Losses/dsc_loss", {'train': epoch_dsc_loss}, self.current_epoch)
+        if self.args.network == 'Reg' or self.args.network == 'Seg':
+            epoch_dsc_loss = running_dsc_loss / epoch_samples
+            epoch_dsc = running_dsc / epoch_samples
+            self.summary_writer.add_scalars("Losses/dsc_loss", {'train': epoch_dsc_loss}, self.current_epoch)
+            self.summary_writer.add_scalars("Metrics/dsc", {'train': epoch_dsc}, self.current_epoch)
         self.summary_writer.add_scalars("Losses/total_loss", {'train': epoch_loss}, self.current_epoch)
-        self.summary_writer.add_scalars("Metrics/dsc", {'train': epoch_dsc}, self.current_epoch)
         self.summary_writer.add_scalar('number_processed_windows', self.data_iteration, self.current_epoch)
 
         if self.args.network == 'Seg':
@@ -302,8 +306,8 @@ class stlAgent(BaseAgent):
         with torch.no_grad():
 
             # Iterate over data
-            for batch_idx, (fimage, flabel, mimage, mlabel) in enumerate(self.dataloaders['validation'], 1):
-                data_dict = clean_data(fimage, flabel, mimage, mlabel, self.args) # ??? add dose
+            for batch_idx, (fimage, flabel, fdose, mimage, mlabel) in enumerate(self.dataloaders['validation'], 1):
+                data_dict = clean_data(fimage, flabel, fdose, mimage, mlabel, self.args) # ??? add dose
                 nbatches, wsize, nchannels, x, y, z, _ = fimage.size()
 
                 # forward pass
@@ -375,14 +379,22 @@ class stlAgent(BaseAgent):
                     loss = ncc_loss + self.args.w_bending_energy * smooth_loss
 
                 elif self.args.network == 'Dose':
-                    mse_loss = self.mse_loss(data_dict['dose'], res)
+                    mse_loss_high = self.mse_loss(data_dict['fdose_high'], res['logits_high'])
+                    mse_loss_mid  = self.mse_loss(data_dict['fdose_mid'] , res['logits_mid'])
+                    mse_loss_low  = self.mse_loss(data_dict['fdose_low'] , res['logits_low'])
+
+                    mse_loss = self.args.level_weights[0] * mse_loss_high + \
+                               self.args.level_weights[1] * mse_loss_mid + \
+                               self.args.level_weights[2] * mse_loss_low
                     loss = mse_loss
+                    
 
                 # statistics
                 epoch_samples += fimage.size(0)
                 running_loss += loss.item() * fimage.size(0)
-                running_dsc_loss += dsc_loss.item() * fimage.size(0)  # ???
-                running_dsc += (1.0 - dsc_loss.item()) * fimage.size(0)
+                if self.args.network == 'Reg' or self.args.network == 'Seg':
+                    running_dsc_loss += dsc_loss.item() * fimage.size(0)  
+                    running_dsc += (1.0 - dsc_loss.item()) * fimage.size(0)
                 if self.args.network == 'Reg':
                     running_ncc_loss += ncc_loss.item() * fimage.size(0)
                     running_ncc += (1.0 - ncc_loss.item()) * fimage.size(0)
@@ -392,11 +404,13 @@ class stlAgent(BaseAgent):
                 self.current_iteration += 1
 
             epoch_loss = running_loss / epoch_samples
-            epoch_dsc_loss = running_dsc_loss / epoch_samples # veranderd
-            epoch_dsc = running_dsc / epoch_samples
-            self.summary_writer.add_scalars("Losses/dsc_loss", {'train': epoch_dsc_loss}, self.current_epoch)
+            if self.args.network == 'Reg' or self.args.network == 'Seg':
+                epoch_dsc_loss = running_dsc_loss / epoch_samples 
+                epoch_dsc = running_dsc / epoch_samples
+                self.summary_writer.add_scalars("Losses/dsc_loss", {'train': epoch_dsc_loss}, self.current_epoch)
+                self.summary_writer.add_scalars("Metrics/dsc", {'train': epoch_dsc}, self.current_epoch)
+
             self.summary_writer.add_scalars("Losses/total_loss", {'train': epoch_loss}, self.current_epoch)
-            self.summary_writer.add_scalars("Metrics/dsc", {'train': epoch_dsc}, self.current_epoch)
             self.summary_writer.add_scalar('number_processed_windows', self.data_iteration, self.current_epoch)
 
             if self.args.network == 'Seg':

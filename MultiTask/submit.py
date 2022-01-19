@@ -7,7 +7,7 @@ setting = dict()
 setting['cluster_manager'] = 'Slurm'
 setting['NumberOfGPU'] = 1
 setting['cluster_MemPerCPU'] = 7500
-setting['cluster_NumberOfCPU'] = 5           # Number of CPU per job
+setting['cluster_NumberOfCPU'] = 7           # Number of CPU per job
 setting['cluster_NodeList'] = 'res-hpc-lkeb03' # ['res-hpc-gpu01','res-hpc-gpu02','res-hpc-lkeb03',---,'res-hpc-lkeb07']
 
 
@@ -39,8 +39,11 @@ experiments_dict['registration_b'] ={'model_name':'Reg', 'task':'Single-Task', '
 experiments_dict['doseprediction_a'] ={'model_name':'Dose', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
                                      'input':'Sf', 'task_ids': ['dose'], 'num_featurmaps': [23, 45, 91], 'num_classes':3}
 
+experiments_dict['doseprediction_b'] ={'model_name':'Dose', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
+                                     'input':'Sf_If', 'task_ids': ['dose'], 'num_featurmaps': [23, 45, 91], 'num_classes':3}
+
 exp = experiments_dict['doseprediction_a']
-exp['is_debug'] = True
+exp['is_debug'] = False
 is_local = False
 exp['mode'] = 'train'       #['train', 'inference', 'eval']
 
