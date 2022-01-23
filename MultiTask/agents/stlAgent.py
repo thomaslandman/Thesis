@@ -16,6 +16,7 @@ from utils import dataset_niftynet as dset_utils
 from utils.SpatialTransformer import SpatialTransformer
 from utils.model_util import count_parameters
 from utils.segmentation_eval import evaluation
+from utils.dose_prediction_eval import evaluation_dose
 from utils.sliding_window_inference import SlidingWindow
 from utils.util import clean_data, resize_image_mlvl
 
@@ -313,6 +314,8 @@ class stlAgent(BaseAgent):
                 # forward pass
                 if 'Sf' in self.args.input:
                     res = self.model(data_dict['flabel'])
+                elif 'Sf' in self.args.input and len(self.args.input) == 2:
+                    res = self.model(data_dict['flabel'], data_dict['fimage'])
                 elif len(self.args.input) == 1:
                     res = self.model(data_dict['fimage'])
                 elif len(self.args.input) == 2 and 'Im' in self.args.input:
@@ -450,11 +453,12 @@ class stlAgent(BaseAgent):
 
             for i in range(len(inference_cases)):
 
-                print(inference_cases[i].split('/')[-4], inference_cases[i].split('/')[-3])
+                print(inference_cases[i].split('/')[-3], inference_cases[i].split('/')[-2])
 
                 _, data, _ = reader(idx=i, shuffle=False)
 
                 fimage = data['fixed_image'][..., 0, :]
+                flabel = data['fixed_segmentation'][..., 0, :]
                 mimage = data['moving_image'][..., 0, :]
                 mlabel = data['moving_segmentation'][..., 0, :]
 
@@ -467,18 +471,23 @@ class stlAgent(BaseAgent):
                 mimage = mimage / 1000
 
                 fimage = np.expand_dims(fimage, axis=0)
+                flabel = np.expand_dims(flabel, axis=0)
                 mimage = np.expand_dims(mimage, axis=0)
                 mlabel = np.expand_dims(mlabel, axis=0)
 
                 inp_shape = fimage.shape  # 1x1x122x512x512
                 inp_bshape = inp_shape[1:-1]  # 122x512x512
+
+
                 fimage_padded = np.pad(fimage, padding, mode='constant', constant_values=fimage.min())
-                mimage_padded = np.pad(mimage, padding, mode='constant', constant_values=fimage.min())
-                mlabel_padded = np.pad(mlabel, padding, mode='constant', constant_values=fimage.min())
+                flabel_padded = np.pad(flabel, padding, mode='constant', constant_values=flabel.min())
+                mimage_padded = np.pad(mimage, padding, mode='constant', constant_values=mimage.min())
+                mlabel_padded = np.pad(mlabel, padding, mode='constant', constant_values=mlabel.min())
                 f_bshape = fimage_padded.shape[1:-1]  # 162x552x552
                 striding = (list(np.maximum(1, np.array(op_shape) // 2)) if all(out_diff == 0) else op_shape)
                 out_fimage_dummies = np.zeros(inp_shape)  # 1x1x122x512x512
-                out_label_dummies = np.zeros(inp_shape)  # 1x1x122x512x512
+                out_label_dummies = np.zeros(inp_shape)   # 1x1x122x512x512
+                out_dose_dummies = np.zeros(inp_shape)    # 1x1x122x512x512
                 out_dvf_dummies = np.zeros([inp_shape[0], inp_shape[1], inp_shape[2], inp_shape[3], 3])  # 1x1x122x512x512x3
 
                 sw = SlidingWindow(f_bshape, pl_bshape, striding=striding)
@@ -492,17 +501,23 @@ class stlAgent(BaseAgent):
                     except StopIteration:
                         done = True
 
-                    fimage_window= fimage_padded[tuple(slicer)]
+                    fimage_window = fimage_padded[tuple(slicer)]
+                    flabel_window = flabel_padded[tuple(slicer)]
                     mimage_window = mimage_padded[tuple(slicer)]
                     mlabel_window = mlabel_padded[tuple(slicer)]
 
-                    fimage_window = torch.tensor(np.transpose(fimage_window, (0, 4, 1, 2, 3))).to(self.args.device)  #BxCxDxWxH
+                    fimage_window = torch.tensor(np.transpose(fimage_window, (0, 4, 1, 2, 3))).to(self.args.device)  # BxCxDxWxH
+                    flabel_window = torch.tensor(np.transpose(flabel_window, (0, 4, 1, 2, 3))).to(self.args.device)  # BxCxDxWxH
                     mimage_window = torch.tensor(np.transpose(mimage_window, (0, 4, 1, 2, 3))).to(self.args.device)  # BxCxDxWxH
                     mlabel_window = torch.tensor(np.transpose(mlabel_window, (0, 4, 1, 2, 3))).to(self.args.device)  # BxCxDxWxH
 
                     with torch.no_grad():
                         # forward pass
-                        if len(self.args.input) == 1:
+                        if 'Sf' in self.args.input:
+                            res = self.model(flabel_window)
+                        elif 'Sf' in self.args.input and len(self.args.input) == 2:
+                            res = self.model(flabel_window, fimage_window)
+                        elif len(self.args.input) == 1:
                             res = self.model(fimage_window)
                         elif len(self.args.input) == 2 and 'Im' in self.args.input:
                             res = self.model(fimage_window, mimage_window)
@@ -527,30 +542,38 @@ class stlAgent(BaseAgent):
                         out_dvf_dummies[tuple(out_slicer)] = np.transpose(res['dvf_high'].cpu().numpy(), (0, 2, 3, 4, 1))  #BxDxWxHxC
                         out_label_dummies[tuple(out_slicer)] = np.transpose(mlabel_high_out.cpu().numpy(), (0, 2, 3, 4, 1))  # BxDxWxHxC
 
+                    elif self.args.network == 'Dose':
+                        dose = F.relu(res['logits_high'])
+                        out_dose_dummies[tuple(out_slicer)] = np.transpose(dose.cpu().numpy(), (0, 2, 3, 4, 1)) #BxDxWxHxC
+
                     if done:
                         break
 
-                # here under self.args.prediction_dir ???
 
-                save_dir = os.path.join(self.args.output_dir, dataset, inference_cases[i].split('/')[-4],
-                                        inference_cases[i].split('/')[-3])
+                save_dir = os.path.join(self.args.output_dir, dataset, inference_cases[i].split('/')[-3],
+                                        inference_cases[i].split('/')[-2])
                 if not os.path.exists(save_dir):
                     os.makedirs(save_dir)
 
-                out_fimage_dummies = out_fimage_dummies * 1000
                 im_itk = sitk.ReadImage(inference_cases[i])
 
-                flabel_itk = sitk.GetImageFromArray(np.squeeze(out_label_dummies.astype(np.uint8)))
-                flabel_itk.SetOrigin(im_itk.GetOrigin())
-                # flabel_itk.SetSpacing([1., 1., 1.])
-                flabel_itk.SetSpacing(im_itk.GetSpacing())
-                flabel_itk.SetDirection(im_itk.GetDirection())
+                if self.args.network == 'Seg':
+                    flabel_itk = sitk.GetImageFromArray(np.squeeze(out_label_dummies.astype(np.uint8)))
+                    flabel_itk.SetOrigin(im_itk.GetOrigin())
+                    # flabel_itk.SetSpacing([1., 1., 1.])
+                    flabel_itk.SetSpacing(im_itk.GetSpacing())
+                    flabel_itk.SetDirection(im_itk.GetDirection())
 
-                if self.args.network == 'Seg':  # ???
                     sitk.WriteImage(flabel_itk, os.path.join(save_dir, 'Segmentation.mha'))
 
                 elif self.args.network == 'Reg':
+                    flabel_itk = sitk.GetImageFromArray(np.squeeze(out_label_dummies.astype(np.uint8)))
+                    flabel_itk.SetOrigin(im_itk.GetOrigin())
+                    # flabel_itk.SetSpacing([1., 1., 1.])
+                    flabel_itk.SetSpacing(im_itk.GetSpacing())
+                    flabel_itk.SetDirection(im_itk.GetDirection())
 
+                    out_fimage_dummies = out_fimage_dummies * 1000
                     fimage_itk = sitk.GetImageFromArray(np.squeeze(out_fimage_dummies.astype(np.int16)))
                     fimage_itk.SetOrigin(im_itk.GetOrigin())
                     # fimage_itk.SetSpacing([1., 1., 1.])
@@ -567,10 +590,23 @@ class stlAgent(BaseAgent):
                     sitk.WriteImage(fimage_itk, os.path.join(save_dir, 'ResampledImage.mha'))
                     sitk.WriteImage(dvf_itk, os.path.join(save_dir, 'DVF.mha'))
 
+                if self.args.network == 'Dose':
+                    fdose_itk = sitk.GetImageFromArray(np.squeeze(out_dose_dummies.astype(np.float32)))
+                    fdose_itk.SetOrigin(im_itk.GetOrigin())
+                    # flabel_itk.SetSpacing([1., 1., 1.])
+                    fdose_itk.SetSpacing(im_itk.GetSpacing())
+                    fdose_itk.SetDirection(im_itk.GetDirection())
+
+                    sitk.WriteImage(fdose_itk, os.path.join(save_dir, 'Dose.mha'))
 
 
     def eval(self):
-        evaluation(self.args, self.data_config)
+        if self.args.network == 'Seg' or self.args.network == 'Reg':
+            evaluation(self.args, self.data_config)
+
+        if self.args.network == 'Dose':
+            evaluation_dose(self.args, self.data_config)
+
 
     def finalize(self):
         """

@@ -1,12 +1,45 @@
 import csv
-import os
 import matplotlib.pyplot as plt
-import pydicom
 import numpy as np
-from rt_utils import RTStructBuilder
-import SimpleITK as sitk
 import pandas as pd
 from load_data import read_mha, get_paths_csv
+
+pred_dose_path = '/exports/lkeb-hpc/tlandman/Thesis/MultiTask/experiments/Single-Task/Dose_input_Sf/output/HMC/Patient_22/visit_20071029/Dose.mha'
+dose_path= '/exports/lkeb-hpc/tlandman/Data/Patient_MHA/Patient_22/visit_20071029/Dose.mha'
+dose = read_mha(dose_path)
+dose_pred = read_mha(pred_dose_path)
+
+diff = dose - dose_pred
+
+fig, axs = plt.subplots(2, 2)
+slice = 55
+
+plot = axs[0, 0].imshow(dose[slice, :, :], cmap='jet')
+axs[0, 0].set_title('Plan Dose [Gy]')
+# for i in range(np.shape(struct)[0]):
+#     axs[0, 0].contour(struct[i, :, :, slice], levels=1, colors='white', linestyles='--')
+fig.colorbar(plot, ax=axs[0,0])
+
+plot = axs[0, 1].imshow(dose_pred[slice, :, :], cmap='jet')
+axs[0, 1].set_title('Predicted Dose [Gy]')
+# for i in range(np.shape(struct)[0]):
+#     axs[0, 1].contour(struct[i, :, :, slice], levels=1, colors='white', linestyles='--')
+fig.colorbar(plot, ax=axs[0,1])
+
+plot = axs[1, 0].imshow(diff[slice, :, :], cmap='bwr', vmax=20, vmin=-20)
+axs[1, 0].set_title('Dose Difference [Gy]')
+# for i in range(np.shape(struct)[0]):
+#     axs[1, 0].contour(struct[i, :, :, slice], levels=1, colors='green', linestyles='--')
+fig.colorbar(plot, ax=axs[1,0])
+
+# plot = axs[1, 1].imshow(gamma_map[:, :, slice], cmap='Greys')
+# axs[1, 1].set_title('3%/3mm Gamma Map')
+# for i in range(np.shape(struct)[0]):
+#     axs[1, 1].contour(struct[i, :, :, slice], levels=1, colors='green', linestyles='--')
+# fig.colorbar(plot, ax=axs[1, 1])
+# plt.savefig('/exports/lkeb-hpc/tlandman/')
+plt.show()
+
 
 
 def dose_eval(csv_path):
@@ -117,6 +150,6 @@ def oar_dose_hist(data_csv_path):
 
     plt.show()
 
-data_path = '/exports/lkeb-hpc/tlandman/Thesis/Treatment_Plans/Plan_Eval_13_01.csv'
-# target_dose_hist(data_path)
-oar_dose_hist(data_path)
+# data_path = '/exports/lkeb-hpc/tlandman/Thesis/Treatment_Plans/Plan_Eval_13_01.csv'
+# # target_dose_hist(data_path)
+# oar_dose_hist(data_path)
