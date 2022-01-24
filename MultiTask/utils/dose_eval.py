@@ -3,44 +3,57 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from load_data import read_mha, get_paths_csv
+import SimpleITK as sitk
+import os
 
-pred_dose_path = '/exports/lkeb-hpc/tlandman/Thesis/MultiTask/experiments/Single-Task/Dose_input_Sf/output/HMC/Patient_22/visit_20071029/Dose.mha'
-dose_path= '/exports/lkeb-hpc/tlandman/Data/Patient_MHA/Patient_22/visit_20071029/Dose.mha'
-dose = read_mha(dose_path)
-dose_pred = read_mha(pred_dose_path)
-
-diff = dose - dose_pred
-
-fig, axs = plt.subplots(2, 2)
-slice = 55
-
-plot = axs[0, 0].imshow(dose[slice, :, :], cmap='jet')
-axs[0, 0].set_title('Plan Dose [Gy]')
-# for i in range(np.shape(struct)[0]):
-#     axs[0, 0].contour(struct[i, :, :, slice], levels=1, colors='white', linestyles='--')
-fig.colorbar(plot, ax=axs[0,0])
-
-plot = axs[0, 1].imshow(dose_pred[slice, :, :], cmap='jet')
-axs[0, 1].set_title('Predicted Dose [Gy]')
-# for i in range(np.shape(struct)[0]):
-#     axs[0, 1].contour(struct[i, :, :, slice], levels=1, colors='white', linestyles='--')
-fig.colorbar(plot, ax=axs[0,1])
-
-plot = axs[1, 0].imshow(diff[slice, :, :], cmap='bwr', vmax=20, vmin=-20)
-axs[1, 0].set_title('Dose Difference [Gy]')
-# for i in range(np.shape(struct)[0]):
-#     axs[1, 0].contour(struct[i, :, :, slice], levels=1, colors='green', linestyles='--')
-fig.colorbar(plot, ax=axs[1,0])
-
-# plot = axs[1, 1].imshow(gamma_map[:, :, slice], cmap='Greys')
-# axs[1, 1].set_title('3%/3mm Gamma Map')
-# for i in range(np.shape(struct)[0]):
-#     axs[1, 1].contour(struct[i, :, :, slice], levels=1, colors='green', linestyles='--')
-# fig.colorbar(plot, ax=axs[1, 1])
-# plt.savefig('/exports/lkeb-hpc/tlandman/')
-plt.show()
-
-
+# pred_dose_path = '/exports/lkeb-hpc/tlandman/Thesis/MultiTask/experiments/Single-Task/Dose_input_Sf/output/HMC/Patient_22/visit_20071029/Dose.mha'
+# dose_path= '/exports/lkeb-hpc/tlandman/Data/Patient_MHA/Patient_22/visit_20071029/Dose.mha'
+# dose = read_mha(dose_path)
+# dose_pred = read_mha(pred_dose_path)
+#
+# diff = dose - dose_pred
+#
+# fig, axs = plt.subplots(2, 2)
+# slice = 55
+#
+# plot = axs[0, 0].imshow(dose[slice, :, :], cmap='jet')
+# axs[0, 0].set_title('Plan Dose [Gy]')
+# # for i in range(np.shape(struct)[0]):
+# #     axs[0, 0].contour(struct[i, :, :, slice], levels=1, colors='white', linestyles='--')
+# fig.colorbar(plot, ax=axs[0,0])
+#
+# plot = axs[0, 1].imshow(dose_pred[slice, :, :], cmap='jet')
+# axs[0, 1].set_title('Predicted Dose [Gy]')
+# # for i in range(np.shape(struct)[0]):
+# #     axs[0, 1].contour(struct[i, :, :, slice], levels=1, colors='white', linestyles='--')
+# fig.colorbar(plot, ax=axs[0,1])
+#
+# plot = axs[1, 0].imshow(diff[slice, :, :], cmap='bwr', vmax=20, vmin=-20)
+# axs[1, 0].set_title('Dose Difference [Gy]')
+# # for i in range(np.shape(struct)[0]):
+# #     axs[1, 0].contour(struct[i, :, :, slice], levels=1, colors='green', linestyles='--')
+# fig.colorbar(plot, ax=axs[1,0])
+#
+# # plot = axs[1, 1].imshow(gamma_map[:, :, slice], cmap='Greys')
+# # axs[1, 1].set_title('3%/3mm Gamma Map')
+# # for i in range(np.shape(struct)[0]):
+# #     axs[1, 1].contour(struct[i, :, :, slice], levels=1, colors='green', linestyles='--')
+# # fig.colorbar(plot, ax=axs[1, 1])
+# # plt.savefig('/exports/lkeb-hpc/tlandman/')
+# plt.show()
+dose_paths = get_paths_csv("/exports/lkeb-hpc/tlandman/Thesis/MultiTask/data/thomas/fixed_Dose.csv")
+for i in range(len(dose_paths)):
+    dose_path = dose_paths[i]
+    dose = read_mha(dose_path, type=np.float32)
+    sampler = np.array(np.where(dose>0, 1, 0), dtype=np.uint8)
+    print(np.shape(sampler))
+    print(sampler[5,5,5])
+    sampler_itk = sitk.GetImageFromArray(sampler)
+    writer = sitk.ImageFileWriter()
+    sampler_path = os.path.join('/'.join(dose_path.split('/')[:-1]),'Sampler_Dose.mha')
+    print(sampler_path)
+    writer.SetFileName(sampler_path)
+    writer.Execute(sampler_itk)
 
 def dose_eval(csv_path):
     dose_paths = get_paths_csv("/exports/lkeb-hpc/tlandman/Thesis/MultiTask/data/thomas/fixed_Dose.csv")

@@ -16,6 +16,7 @@ from niftynet.engine.image_window import N_SPATIAL
 from niftynet.engine.sampler_uniform_v2 import UniformSampler
 # from sampler_uniform_v2 import UniformSampler
 from niftynet.engine.sampler_weighted_v2 import crop_sampling_map
+import matplotlib.pyplot as plt
 
 
 class BalancedSampler(UniformSampler):
@@ -67,7 +68,12 @@ def balanced_spatial_coordinates(n_samples, img_spatial_size, win_spatial_size, 
     # print(n_samples)
     # cropped_map = sampler_map
     flatten_map = cropped_map.flatten()
-    unique_labels = np.unique(flatten_map)[1:]
+    unique_labels = [1] #np.unique(flatten_map)[1:2]
+    # print(unique_labels)
+    # print(np.shape(sampler_map))
+    # print(np.max(sampler_map))
+    # plt.imshow(sampler_map[100,:,:,0,0])
+    # plt.show()
     # print(n_samples)
 
     # system parameter?

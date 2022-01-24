@@ -16,7 +16,7 @@ from utils import dataset_niftynet as dset_utils
 from utils.SpatialTransformer import SpatialTransformer
 from utils.model_util import count_parameters
 from utils.segmentation_eval import evaluation
-from utils.dose_prediction_eval import evaluation_dose
+# from utils.dose_prediction_eval import evaluation_dose
 from utils.sliding_window_inference import SlidingWindow
 from utils.util import clean_data, resize_image_mlvl
 
