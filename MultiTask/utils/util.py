@@ -49,7 +49,7 @@ def resize_image_mlvl(args, image, level):
             (args.mlvl_borders[level]):(args.patch_size[2] - args.mlvl_borders[level])]) \
             [:, :, ::args.mlvl_strides[level], ::args.mlvl_strides[level], ::args.mlvl_strides[level]]
 
-def clean_data(fimage, flabel, fdose, mimage, mlabel, args):
+def clean_data(fimage, flabel, fdose, mimage, mlabel, mdose, args):
     # format the input images in the right format for pytorch model
     nbatches, wsize, nchannels, x, y, z, _ = fimage.size()
     fimage = fimage.view(nbatches * wsize, nchannels, x, y, z).to(args.device)  # (n, 1, d, w, h)
@@ -57,6 +57,7 @@ def clean_data(fimage, flabel, fdose, mimage, mlabel, args):
     fdose = fdose.view(nbatches * wsize, nchannels, x, y, z).to(args.device)
     mimage = mimage.view(nbatches * wsize, nchannels, x, y, z).to(args.device)
     mlabel = mlabel.view(nbatches * wsize, nchannels, x, y, z).to(args.device)
+    mdose = mdose.view(nbatches * wsize, nchannels, x, y, z).to(args.device)
 
     # normalize image intensity
     fimage[fimage > 1000] = 1000
@@ -73,6 +74,7 @@ def clean_data(fimage, flabel, fdose, mimage, mlabel, args):
     fdose  = fdose.to(args.device)
     mimage = mimage.to(args.device)  # size B*C*D*W,H
     mlabel = mlabel.to(args.device).float()
+    mdose = mdose.to(args.device)
 
     flabel_high = resize_image_mlvl(args, flabel, 0)
     flabel_mid = resize_image_mlvl(args, flabel, 1)
@@ -94,6 +96,10 @@ def clean_data(fimage, flabel, fdose, mimage, mlabel, args):
     mimage_mid = resize_image_mlvl(args, mimage, 1)
     mimage_low = resize_image_mlvl(args, mimage, 2)
 
+    mdose_high = resize_image_mlvl(args, mdose, 0)
+    mdose_mid = resize_image_mlvl(args, mdose, 1)
+    mdose_low = resize_image_mlvl(args, mdose, 2)
+
     mlabel_high_hot = torch.eye(args.num_classes_seg)[mlabel_high.squeeze(1).long()]
     mlabel_high_hot = mlabel_high_hot.permute(0, 4, 1, 2, 3).float().to(args.device)
 
@@ -103,7 +109,7 @@ def clean_data(fimage, flabel, fdose, mimage, mlabel, args):
     mlabel_low_hot = torch.eye(args.num_classes_seg)[mlabel_low.squeeze(1).long()]
     mlabel_low_hot = mlabel_low_hot.permute(0, 4, 1, 2, 3).float().to(args.device)
 
-    data_dict = {'fimage': fimage, 'flabel': flabel, 'fdose': fdose, 'mimage': mimage, 'mlabel': mlabel,
+    data_dict = {'fimage': fimage, 'flabel': flabel, 'fdose': fdose, 'mimage': mimage, 'mlabel': mlabel, 'mdose': mdose,
                  'fimage_high': fimage_high, 'fimage_mid': fimage_mid, 'fimage_low': fimage_low,
                  'flabel_high':flabel_high, 'flabel_mid':flabel_mid, 'flabel_low':flabel_low,
                  'fdose_high':fdose_high, 'fdose_mid':fdose_mid, 'fdose_low':fdose_low,

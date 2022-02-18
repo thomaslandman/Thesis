@@ -64,7 +64,7 @@ class stlAgent(BaseAgent):
                 self.spatial_transform = SpatialTransformer(dim=self.args.num_classes)
 
             elif self.args.network == 'Dose':
-                self.model = DoseNet(in_channels=1, classes=1,
+                self.model = DoseNet(in_channels=len(self.args.input), classes=1,
                                      depth=self.args.depth, initial_channels=self.args.initial_channels,
                                      channels_list=self.args.num_featurmaps).to(self.args.device)
                 self.mse_loss = nn.MSELoss().to(self.args.device)
@@ -159,20 +159,24 @@ class stlAgent(BaseAgent):
         running_ncc = 0.
         epoch_samples = 0
 
-        for batch_idx, (fimage, flabel, fdose, mimage, mlabel) in enumerate(self.dataloaders['training'], 1):  # add dose to back
+        for batch_idx, (fimage, flabel, fdose, mimage, mlabel, mdose) in enumerate(self.dataloaders['training'], 1):  # add dose to back
             # switch model to training mode, clear gradient accumulators
             self.model.train()
             self.optimizer.zero_grad()
             self.model.zero_grad()
 
-            data_dict = clean_data(fimage, flabel, fdose, mimage, mlabel, self.args) #add dose to back
+            data_dict = clean_data(fimage, flabel, fdose, mimage, mlabel, mdose, self.args) #add dose to back
             nbatches, wsize, nchannels, x, y, z, _ = fimage.size()
 
             # forward pass
-            if 'Sf' in self.args.input:
+            if 'Sf' in self.args.input and len(self.args.input) == 1:
                 res = self.model(data_dict['flabel'])
             elif 'Sf' in self.args.input and len(self.args.input) == 2:
                 res = self.model(data_dict['flabel'], data_dict['fimage'])
+            elif 'Dm' in self.args.input and len(self.args.input) == 1:
+                res = self.model(moving_dose=sampdata_dict['mdose'])
+            elif 'Dm' in self.args.input and len(self.args.input) == 3:
+                res = self.model(data_dict['flabel'], data_dict['fimage'], data_dict['mdose'])
             elif len(self.args.input) == 1:
                 res = self.model(data_dict['fimage'])
             elif len(self.args.input) == 2 and 'Im' in self.args.input:
@@ -307,15 +311,19 @@ class stlAgent(BaseAgent):
         with torch.no_grad():
 
             # Iterate over data
-            for batch_idx, (fimage, flabel, fdose, mimage, mlabel) in enumerate(self.dataloaders['validation'], 1):
-                data_dict = clean_data(fimage, flabel, fdose, mimage, mlabel, self.args) # ??? add dose
+            for batch_idx, (fimage, flabel, fdose, mimage, mlabel, mdose) in enumerate(self.dataloaders['validation'], 1):
+                data_dict = clean_data(fimage, flabel, fdose, mimage, mlabel, mdose, self.args) # ??? add dose
                 nbatches, wsize, nchannels, x, y, z, _ = fimage.size()
 
                 # forward pass
-                if 'Sf' in self.args.input:
+                if 'Sf' in self.args.input and len(self.args.input) == 1:
                     res = self.model(data_dict['flabel'])
                 elif 'Sf' in self.args.input and len(self.args.input) == 2:
                     res = self.model(data_dict['flabel'], data_dict['fimage'])
+                elif 'Dm' in self.args.input and len(self.args.input) == 1:
+                    res = self.model(data_dict['mdose'])
+                elif 'Dm' in self.args.input and len(self.args.input) == 3:
+                    res = self.model(data_dict['flabel'], data_dict['fimage'], data_dict['mdose'])
                 elif len(self.args.input) == 1:
                     res = self.model(data_dict['fimage'])
                 elif len(self.args.input) == 2 and 'Im' in self.args.input:
@@ -517,6 +525,10 @@ class stlAgent(BaseAgent):
                             res = self.model(flabel_window)
                         elif 'Sf' in self.args.input and len(self.args.input) == 2:
                             res = self.model(flabel_window, fimage_window)
+                        elif 'Df' in self.args.input and len(self.args.input) == 1:
+                            res = self.model(mdose_window)
+                        elif 'Df' in self.args.input and len(self.args.input) == 3:
+                            res = self.model(flabel_window, fimage_window, mdose_window)
                         elif len(self.args.input) == 1:
                             res = self.model(fimage_window)
                         elif len(self.args.input) == 2 and 'Im' in self.args.input:

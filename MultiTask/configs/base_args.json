@@ -32,7 +32,7 @@
   "w_bending_energy":0.5,
   "shared_layers_key": "shared",
 
-  "input_list": ["fixed_image", "fixed_segmentation", "fixed_dose", "moving_image", "moving_segmentation", "sampler"],
+  "input_list": ["fixed_image", "fixed_segmentation", "fixed_dose", "moving_image", "moving_segmentation", "moving_dose", "sampler"],
   "root_exp_path": "/exports/lkeb-hpc/tlandman/Thesis/MultiTask/experiments/",
   "debug_config_path": "/exports/lkeb-hpc/tlandman/Thesis/MultiTask/configs/config_thomas_debug.yml",
   "config_path":"/exports/lkeb-hpc/tlandman/Thesis/MultiTask/configs/config_thomas.yml",

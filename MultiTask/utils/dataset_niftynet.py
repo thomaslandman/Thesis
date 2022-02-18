@@ -34,13 +34,15 @@ class DatasetNiftySampler(Dataset):
         fdose  = np.transpose(data['fixed_dose'], (0, 5, 1, 2, 3, 4))
         mimage = np.transpose(data['moving_image'], (0, 5, 1, 2, 3, 4))
         mlabel = np.transpose(data['moving_segmentation'], (0, 5, 1, 2, 3, 4))
+        mdose = np.transpose(data['moving_dose'], (0, 5, 1, 2, 3, 4))
         fimage = torch.from_numpy(fimage).float()
         flabel = torch.from_numpy(flabel).float()
+        fdose = torch.from_numpy(fdose).float()
         mimage = torch.from_numpy(mimage).float()
         mlabel = torch.from_numpy(mlabel).float()
-        fdose  = torch.from_numpy(fdose).float()
+        mdose  = torch.from_numpy(mdose).float()
 
-        return fimage, flabel, fdose, mimage, mlabel
+        return fimage, flabel, fdose, mimage, mlabel, mdose
 
     def __len__(self):
         return len(self.sampler.reader.output_list)
@@ -112,6 +114,11 @@ def set_dataParam(args, config):
         data_param['moving_gtv'] = ParserNamespace(csv_file=config.csv_moving_segmentation_gtv,
                                                             spatial_window_size=args.patch_size,
                                                             pixdim=args.voxel_dim, interp_order=0)
+    if 'moving_dose' in args.input_list:
+        data_param['moving_dose'] = ParserNamespace(csv_file=config.csv_moving_dose,
+                                                           spatial_window_size=args.patch_size,
+                                                           pixdim=args.voxel_dim, interp_order=0)
+
 
 
     if 'sampler' in args.input_list:
