@@ -41,19 +41,42 @@ import os
 # # fig.colorbar(plot, ax=axs[1, 1])
 # # plt.savefig('/exports/lkeb-hpc/tlandman/')
 # plt.show()
-dose_paths = get_paths_csv("/exports/lkeb-hpc/tlandman/Thesis/MultiTask/data/thomas/fixed_Dose.csv")
-for i in range(len(dose_paths)):
-    dose_path = dose_paths[i]
-    dose = read_mha(dose_path, type=np.float32)
-    sampler = np.array(np.where(dose>0, 1, 0), dtype=np.uint8)
-    print(np.shape(sampler))
-    print(sampler[5,5,5])
-    sampler_itk = sitk.GetImageFromArray(sampler)
-    writer = sitk.ImageFileWriter()
-    sampler_path = os.path.join('/'.join(dose_path.split('/')[:-1]),'Sampler_Dose.mha')
-    print(sampler_path)
-    writer.SetFileName(sampler_path)
-    writer.Execute(sampler_itk)
+# dose_paths = get_paths_csv("/exports/lkeb-hpc/tlandman/Thesis/MultiTask/data/thomas/fixed_Dose.csv")
+# for i in range(len(dose_paths)):
+#     dose_path = dose_paths[i]
+#     dose = read_mha(dose_path, type=np.float32)
+#     sampler = np.array(np.where(dose>0, 1, 0), dtype=np.uint8)
+#     print(np.shape(sampler))
+#     print(sampler[5,5,5])
+#     sampler_itk = sitk.GetImageFromArray(sampler)
+#     writer = sitk.ImageFileWriter()
+#     sampler_path = os.path.join('/'.join(dose_path.split('/')[:-1]),'Sampler_Dose.mha')
+#     print(sampler_path)
+#     writer.SetFileName(sampler_path)
+#     writer.Execute(sampler_itk)
+# dose_moving_path = "/exports/lkeb-hpc/tlandman/Data/Patient_MHA/Patient_02/visit_20070529/Dose.mha"
+dose_moving_path = "/exports/lkeb-hpc/mseelmahdy/HaukelandAffine/Patient_02/visit_20070529/Images/CTImage.mha"
+# dose_fixed_path = "/exports/lkeb-hpc/tlandman/Data/Patient_MHA/Patient_02/visit_20070601/Dose.mha"
+dose_fixed_path = "/exports/lkeb-hpc/mseelmahdy/HaukelandAffine/Patient_02/visit_20070605/Images_Affine/CTImage.mha"
+third_path = "/exports/lkeb-hpc/mseelmahdy/HaukelandAffine/Patient_02/visit_20070605/Images/CTImage.mha"
+reader = sitk.ImageFileReader()
+reader.SetImageIO("MetaImageIO")
+reader.SetFileName(dose_moving_path)
+dose_moving = reader.Execute()
+reader.SetFileName(dose_fixed_path)
+dose_fixed = reader.Execute()
+reader.SetFileName(third_path)
+third_fixed = reader.Execute()
+print(dose_moving.GetSpacing())
+print(dose_fixed.GetSpacing())
+print(third_fixed.GetSpacing())
+print(dose_moving.GetSize())
+print(dose_fixed.GetSize())
+print(third_fixed.GetSize())
+print(dose_moving.GetOrigin())
+print(dose_fixed.GetOrigin())
+print(third_fixed.GetOrigin())
+
 
 def dose_eval(csv_path):
     dose_paths = get_paths_csv("/exports/lkeb-hpc/tlandman/Thesis/MultiTask/data/thomas/fixed_Dose.csv")

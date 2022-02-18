@@ -7,7 +7,7 @@ setting = dict()
 setting['cluster_manager'] = 'Slurm'
 setting['NumberOfGPU'] = 1
 setting['cluster_MemPerCPU'] = 9500
-setting['cluster_NumberOfCPU'] = 8           # Number of CPU per job
+setting['cluster_NumberOfCPU'] = 10           # Number of CPU per job
 setting['cluster_NodeList'] = 'res-hpc-lkeb03' # ['res-hpc-gpu01','res-hpc-gpu02','res-hpc-lkeb03',---,'res-hpc-lkeb07']
 
 
