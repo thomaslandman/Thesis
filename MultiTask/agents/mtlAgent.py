@@ -15,7 +15,8 @@ from graphs.models.seddnet import SEDDNet
 from utils import dataset_niftynet as dset_utils
 from utils.SpatialTransformer import SpatialTransformer
 from utils.model_util import count_parameters
-from utils.segmentation_eval import evaluation
+from utils.segmentation_eval import evaluation_seg
+from utils.segmentation_eval import evaluation_seg
 from utils.util import clean_data
 
 
@@ -533,7 +534,7 @@ class mtlAgent(BaseAgent):
                 sitk.WriteImage(dvf_itk, os.path.join(save_dir, 'DVF.mha'))
 
     def eval(self):
-        evaluation(self.args, self.config)
+        evaluation_seg(self.args, self.config)
 
 
     def finalize(self):

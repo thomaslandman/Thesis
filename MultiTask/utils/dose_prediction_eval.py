@@ -3,12 +3,12 @@ import os
 import SimpleITK as sitk
 import pandas as pd
 from niftynet.io.image_sets_partitioner import ImageSetsPartitioner
-#
+
 from utils.dataset_niftynet import set_dataParam
-# from utils.overlap_quantification import DSC_MSD_HD95_Seg, DSC_MSD_HD95_Reg
+from utils.dose_quantification import gamma_pass_rate
 
 
-class evaluation(object):
+class evaluation_dose(object):
     def __init__(self, args, config):
         self.args = args
         self.config = config
@@ -27,41 +27,44 @@ class evaluation(object):
 
             files_list = self.partitioner.get_file_list(partition, 'fixed_dose')['fixed_dose'].values.tolist()
 
-
-
-
             writer = pd.ExcelWriter(os.path.join(self.args.output_dir, dataset, "Evaluation-Dose.xlsx"),
                                     engine='xlsxwriter')
 
             if os.path.exists(os.path.join(self.args.output_dir, dataset, "Evaluation-Dose.xlsx")):
                 print("There is already an excel with this name")
+
             else:
 
                 # refresh the values
-                # self.dsc_bladder = []
-                # self.msd_bladder = []
-                # self.hd_bladder = []
-                #
-                # self.dsc_rectum = []
-                # self.msd_rectum = []
-                # self.hd_rectum = []
-                #
-                # self.dsc_gtv = []
-                # self.msd_gtv = []
-                # self.hd_gtv = []
-                #
-                # self.dsc_sv = []
-                # self.msd_sv = []
-                # self.hd_sv = []
-                #
-                # self.patient_arr = []
-                # self.scan_arr = []
+                self.gamma_2_2 = []
+                self.gamma_2_2_gtv = []
+                self.gamma_2_2_sv = []
+                self.gamma_2_2_rectum = []
+                self.gamma_2_2_bladder = []
+
+                self.V_95_gtv = []
+                self.V_110_gtv = []
+
+                self.V_95_sv = []
+                self.V_110_sv = []
+
+                self.D_mean_rectum = []
+                self.D_2_rectum = []
+
+                self.D_mean_bladder = []
+                self.D_2_bladder= []
+
+                self.patient_arr = []
+                self.scan_arr = []
 
                 for file in files_list:
                     patient_name = file.split('/')[-3]
                     visit_name = file.split('/')[-2]
 
                     groundtruth_dose = sitk.ReadImage(file)
+                    groundtruth_contours = sitk.ReadImage(os.path.join(os.path.split(file)[0], 'Segmentation.mha'))
+                    predicted_dose = sitk.ReadImage(os.path.join(self.args.output_dir, dataset, patient_name, visit_name, 'Dose.mha'))
+
                     # groundtruth_bladder = sitk.BinaryThreshold(groundtruth_segmentation, lowerThreshold=1,
                     #                                            upperThreshold=1, insideValue=1, outsideValue=0)
                     # groundtruth_rectum = sitk.BinaryThreshold(groundtruth_segmentation, lowerThreshold=2,
@@ -71,82 +74,56 @@ class evaluation(object):
                     # groundtruth_prostate = sitk.BinaryThreshold(groundtruth_segmentation, lowerThreshold=4,
                     #                                             upperThreshold=4, insideValue=1, outsideValue=0)
 
-                    predicted_dose = sitk.ReadImage((os.path.join(self.args.output_dir, dataset,
-                                                                          patient_name, visit_name, self.args.label_name[j])))
 
+                    gamma_2_2, gamma_2_2_gtv, gamma_2_2_sv, gamma_2_2_rectum, gamma_2_2_bladder = gamma_pass_rate(groundtruth_dose, predicted_dose, groundtruth_contours)
+                    # gamma_2_2 = gamma_pass_rate(groundtruth_dose, predicted_dose, groundtruth_contours, distance=2, threshold=2)
 
-                    predicted_bladder = sitk.BinaryThreshold(predicted_segmentation, lowerThreshold=1,
-                                                             upperThreshold=1, insideValue=1, outsideValue=0)
-                    predicted_rectum = sitk.BinaryThreshold(predicted_segmentation, lowerThreshold=2,
-                                                            upperThreshold=2, insideValue=1, outsideValue=0)
-                    predicted_sv = sitk.BinaryThreshold(predicted_segmentation, lowerThreshold=3,
-                                                        upperThreshold=3, insideValue=1, outsideValue=0)
-                    predicted_prostate = sitk.BinaryThreshold(predicted_segmentation, lowerThreshold=4,
-                                                              upperThreshold=4, insideValue=1, outsideValue=0)
-
-
-                    if 'Resampled' in self.args.label_name[j]:
-                        dsc_bladder, msd_bladder, hd_bladder, _, _ = DSC_MSD_HD95_Reg(groundtruth_bladder, predicted_bladder,
-                                                                                  resample_spacing=self.args.voxel_dim)
-                        dsc_rectum, msd_rectum, hd_rectum, _, _ = DSC_MSD_HD95_Reg(groundtruth_rectum, predicted_rectum,
-                                                                               resample_spacing=self.args.voxel_dim)
-                        dsc_sv, msd_sv, hd_sv, _, _ = DSC_MSD_HD95_Reg(groundtruth_sv, predicted_sv,
-                                                                   resample_spacing=self.args.voxel_dim)
-                        dsc_prostate, msd_prostate, hd_prostate, _, _ = DSC_MSD_HD95_Reg(groundtruth_prostate, predicted_prostate,
-                                                                                     resample_spacing=self.args.voxel_dim)
-
-                    else:
-                        dsc_bladder, msd_bladder, hd_bladder, _, _ = DSC_MSD_HD95_Seg(groundtruth_bladder,
-                                                                                      predicted_bladder,
-                                                                                      self.args.num_components[1],
-                                                                                      resample_spacing=self.args.voxel_dim)
-                        dsc_rectum, msd_rectum, hd_rectum, _, _ = DSC_MSD_HD95_Seg(groundtruth_rectum,
-                                                                                   predicted_rectum,
-                                                                                   self.args.num_components[1],
-                                                                                   resample_spacing=self.args.voxel_dim)
-                        dsc_sv, msd_sv, hd_sv, _, _ = DSC_MSD_HD95_Seg(groundtruth_sv, predicted_sv,
-                                                                       self.args.num_components[0],
-                                                                       resample_spacing=self.args.voxel_dim)
-                        dsc_prostate, msd_prostate, hd_prostate, _, _ = DSC_MSD_HD95_Seg(groundtruth_prostate,
-                                                                                         predicted_prostate,
-                                                                                         self.args.num_components[
-                                                                                             1],
-                                                                                         resample_spacing=self.args.voxel_dim)
+                    # dsc_bladder, msd_bladder, hd_bladder, _, _ = DSC_MSD_HD95_Seg(groundtruth_bladder,
+                    #                                                               predicted_bladder,
+                    #                                                               self.args.num_components[1],
+                    #                                                               resample_spacing=self.args.voxel_dim)
+                    # dsc_rectum, msd_rectum, hd_rectum, _, _ = DSC_MSD_HD95_Seg(groundtruth_rectum,
+                    #                                                            predicted_rectum,
+                    #                                                            self.args.num_components[1],
+                    #                                                            resample_spacing=self.args.voxel_dim)
+                    # dsc_sv, msd_sv, hd_sv, _, _ = DSC_MSD_HD95_Seg(groundtruth_sv, predicted_sv,
+                    #                                                self.args.num_components[0],
+                    #                                                resample_spacing=self.args.voxel_dim)
+                    # dsc_prostate, msd_prostate, hd_prostate, _, _ = DSC_MSD_HD95_Seg(groundtruth_prostate,
+                    #                                                                  predicted_prostate,
+                    #                                                                  self.args.num_components[
+                    #                                                                      1],
+                    #                                                                  resample_spacing=self.args.voxel_dim)
 
                     self.patient_arr.append(patient_name)
                     self.scan_arr.append(visit_name)
 
-                    self.dsc_bladder.append(dsc_bladder)
-                    self.msd_bladder.append(msd_bladder)
-                    self.hd_bladder.append(hd_bladder)
+                    self.gamma_2_2.append(gamma_2_2)
+                    self.gamma_2_2_gtv.append(gamma_2_2_gtv)
+                    self.gamma_2_2_sv.append(gamma_2_2_sv)
+                    self.gamma_2_2_rectum.append(gamma_2_2_rectum)
+                    self.gamma_2_2_bladder.append(gamma_2_2_bladder)
+                    #
+                    # self.V_95_gtv.append()
+                    # self.V_110_gtv.append()
+                    # self.V_95_sv.append()
+                    # self.V_110_sv.append()
+                    #
+                    # self.D_mean_rectum.append()
+                    # self.D_2_rectum.append()
+                    # self.D_mean_bladder.append()
+                    # self.D_2_bladder.append()
 
-                    self.dsc_rectum.append(dsc_rectum)
-                    self.msd_rectum.append(msd_rectum)
-                    self.hd_rectum.append(hd_rectum)
-
-                    self.dsc_gtv.append(dsc_prostate)
-                    self.msd_gtv.append(msd_prostate)
-                    self.hd_gtv.append(hd_prostate)
-
-                    self.dsc_sv.append(dsc_sv)
-                    self.msd_sv.append(msd_sv)
-                    self.hd_sv.append(hd_sv)
 
                     print(dataset, patient_name, visit_name)
 
 
-                data = {'Patient': self.patient_arr, 'Scan': self.scan_arr,
-                        'DSC_Bladder': self.dsc_bladder, 'MSD_Bladder': self.msd_bladder,
-                        'HD%95_Bladder': self.hd_bladder,'DSC_Rectum': self.dsc_rectum,
-                        'MSD_Rectum': self.msd_rectum, 'HD%95_Rectum': self.hd_rectum,
-                        'DSC_SeminalVesicle': self.dsc_sv, 'MSD_SeminalVesicle': self.msd_sv,
-                        'HD%95_SeminalVesicle': self.hd_sv, 'DSC_GTV': self.dsc_gtv,
-                        'MSD_GTV': self.msd_gtv, 'HD%95_GTV': self.hd_gtv}
+                data = {'Patient': self.patient_arr, 'Scan': self.scan_arr, 'gamma_2_2': self.gamma_2_2, 'gamma_2_2_gtv': self.gamma_2_2_gtv,
+                        'gamma_2_2_sv': self.gamma_2_2_sv, 'gamma_2_2_rectum': self.gamma_2_2_rectum, 'gamma_2_2_bladder': self.gamma_2_2_bladder}
 
                 df = pd.DataFrame(data, dtype=float)
 
-                df = df.reindex(['Patient', 'Scan', 'DSC_Bladder', 'MSD_Bladder', 'HD%95_Bladder','DSC_Rectum', 'MSD_Rectum',
-                                 'HD%95_Rectum','DSC_SeminalVesicle', 'MSD_SeminalVesicle', 'HD%95_SeminalVesicle','DSC_GTV', 'MSD_GTV', 'HD%95_GTV'], axis=1)
+                df = df.reindex(['Patient', 'Scan', 'gamma_2_2', 'gamma_2_2_gtv', 'gamma_2_2_sv', 'gamma_2_2_rectum', 'gamma_2_2_bladder'], axis=1)
 
                 df.loc['Median'] = df.median()
                 df.loc['Min'] = df.min()

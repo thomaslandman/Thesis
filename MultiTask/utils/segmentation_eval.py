@@ -8,7 +8,7 @@ from utils.dataset_niftynet import set_dataParam
 from utils.overlap_quantification import DSC_MSD_HD95_Seg, DSC_MSD_HD95_Reg
 
 
-class evaluation(object):
+class evaluation_seg(object):
     def __init__(self, args, config):
         self.args = args
         self.config = config

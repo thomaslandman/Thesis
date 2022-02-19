@@ -51,10 +51,10 @@ experiments_dict['doseprediction_d'] ={'model_name':'Dose_Samp', 'task':'Single-
 experiments_dict['doseprediction_e'] ={'model_name':'Dose_Samp', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
                                      'input':'Dm', 'task_ids': ['dose'], 'num_featurmaps': [23, 45, 91], 'num_classes':3}
 
-exp = experiments_dict['doseprediction_e']
+exp = experiments_dict['doseprediction_a']
 exp['is_debug'] = False
-is_local = False
-exp['mode'] = 'train'       #['train', 'inference', 'eval']
+is_local = True
+exp['mode'] = 'eval'       #['train', 'inference', 'eval']
 
 base_json_script = '/exports/lkeb-hpc/tlandman/Thesis/MultiTask/configs/base_args.json'
 script_address = '/exports/lkeb-hpc/tlandman/Thesis/MultiTask/main.py'

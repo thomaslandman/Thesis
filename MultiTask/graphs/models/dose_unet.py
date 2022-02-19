@@ -46,16 +46,16 @@ class DoseNet(nn.Module):
         '''
         if fixed_image == None and moving_dose == None:
             input_image = fixed_segmentation
-            print('model 1')
+
         elif fixed_segmentation == None and fixed_image == None:
-            print('model 2')
             input_image = moving_dose
+
         elif moving_dose == None:
             input_image = torch.cat((fixed_segmentation, fixed_image), dim=1) # (n, 1, d, h, w)
-            print('model 3')
+
         else:
             input_image = torch.cat((fixed_segmentation, fixed_image, moving_dose), dim=1)  # (n, 1, d, h, w)
-            print('model 4')
+
         logits_list = self.unet(input_image)
         # probs_list = [F.softmax(x, dim=1) for x in logits_list]
         # predicted_label_list = [torch.max(x, dim=1, keepdim=True)[1] for x in probs_list]

@@ -15,8 +15,8 @@ from graphs.models.dose_unet import DoseNet
 from utils import dataset_niftynet as dset_utils
 from utils.SpatialTransformer import SpatialTransformer
 from utils.model_util import count_parameters
-from utils.segmentation_eval import evaluation
-# from utils.dose_prediction_eval import evaluation_dose
+from utils.segmentation_eval import evaluation_seg
+from utils.dose_prediction_eval import evaluation_dose
 from utils.sliding_window_inference import SlidingWindow
 from utils.util import clean_data, resize_image_mlvl
 
@@ -614,7 +614,7 @@ class stlAgent(BaseAgent):
 
     def eval(self):
         if self.args.network == 'Seg' or self.args.network == 'Reg':
-            evaluation(self.args, self.data_config)
+            evaluation_seg(self.args, self.data_config)
 
         if self.args.network == 'Dose':
             evaluation_dose(self.args, self.data_config)
