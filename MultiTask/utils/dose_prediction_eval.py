@@ -5,7 +5,7 @@ import pandas as pd
 from niftynet.io.image_sets_partitioner import ImageSetsPartitioner
 
 from utils.dataset_niftynet import set_dataParam
-from utils.dose_quantification import gamma_pass_rate
+from utils.dose_quantification import gamma_pass
 
 
 class evaluation_dose(object):
@@ -75,7 +75,7 @@ class evaluation_dose(object):
                     #                                             upperThreshold=4, insideValue=1, outsideValue=0)
 
 
-                    gamma_2_2, gamma_2_2_gtv, gamma_2_2_sv, gamma_2_2_rectum, gamma_2_2_bladder = gamma_pass_rate(groundtruth_dose, predicted_dose, groundtruth_contours)
+                    gamma_2_2, gamma_2_2_gtv, gamma_2_2_sv, gamma_2_2_rectum, gamma_2_2_bladder = gamma_pass(groundtruth_dose, predicted_dose, groundtruth_contours)
                     # gamma_2_2 = gamma_pass_rate(groundtruth_dose, predicted_dose, groundtruth_contours, distance=2, threshold=2)
 
                     # dsc_bladder, msd_bladder, hd_bladder, _, _ = DSC_MSD_HD95_Seg(groundtruth_bladder,

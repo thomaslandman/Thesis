@@ -469,6 +469,7 @@ class stlAgent(BaseAgent):
                 flabel = data['fixed_segmentation'][..., 0, :]
                 mimage = data['moving_image'][..., 0, :]
                 mlabel = data['moving_segmentation'][..., 0, :]
+                mdose = data['moving_dose'][..., 0, :]
 
                 fimage[fimage > 1000] = 1000
                 fimage[fimage < -1000] = -1000
@@ -482,6 +483,7 @@ class stlAgent(BaseAgent):
                 flabel = np.expand_dims(flabel, axis=0)
                 mimage = np.expand_dims(mimage, axis=0)
                 mlabel = np.expand_dims(mlabel, axis=0)
+                mdose = np.expand_dims(mdose, axis=0)
 
                 inp_shape = fimage.shape  # 1x1x122x512x512
                 inp_bshape = inp_shape[1:-1]  # 122x512x512
@@ -491,6 +493,7 @@ class stlAgent(BaseAgent):
                 flabel_padded = np.pad(flabel, padding, mode='constant', constant_values=flabel.min())
                 mimage_padded = np.pad(mimage, padding, mode='constant', constant_values=mimage.min())
                 mlabel_padded = np.pad(mlabel, padding, mode='constant', constant_values=mlabel.min())
+                mdose_padded = np.pad(mdose, padding, mode='constant', constant_values=mlabel.min())
                 f_bshape = fimage_padded.shape[1:-1]  # 162x552x552
                 striding = (list(np.maximum(1, np.array(op_shape) // 2)) if all(out_diff == 0) else op_shape)
                 out_fimage_dummies = np.zeros(inp_shape)  # 1x1x122x512x512
@@ -513,21 +516,23 @@ class stlAgent(BaseAgent):
                     flabel_window = flabel_padded[tuple(slicer)]
                     mimage_window = mimage_padded[tuple(slicer)]
                     mlabel_window = mlabel_padded[tuple(slicer)]
+                    mdose_window = mdose_padded[tuple(slicer)]
 
                     fimage_window = torch.tensor(np.transpose(fimage_window, (0, 4, 1, 2, 3))).to(self.args.device)  # BxCxDxWxH
                     flabel_window = torch.tensor(np.transpose(flabel_window, (0, 4, 1, 2, 3))).to(self.args.device)  # BxCxDxWxH
                     mimage_window = torch.tensor(np.transpose(mimage_window, (0, 4, 1, 2, 3))).to(self.args.device)  # BxCxDxWxH
                     mlabel_window = torch.tensor(np.transpose(mlabel_window, (0, 4, 1, 2, 3))).to(self.args.device)  # BxCxDxWxH
+                    mdose_window = torch.tensor(np.transpose(mdose_window, (0, 4, 1, 2, 3))).to(self.args.device)  # BxCxDxWxH
 
                     with torch.no_grad():
                         # forward pass
-                        if 'Sf' in self.args.input:
+                        if 'Sf' in self.args.input and len(self.args.input) == 1:
                             res = self.model(flabel_window)
                         elif 'Sf' in self.args.input and len(self.args.input) == 2:
                             res = self.model(flabel_window, fimage_window)
-                        elif 'Df' in self.args.input and len(self.args.input) == 1:
+                        elif 'Dm' in self.args.input and len(self.args.input) == 1:
                             res = self.model(mdose_window)
-                        elif 'Df' in self.args.input and len(self.args.input) == 3:
+                        elif 'Dm' in self.args.input and len(self.args.input) == 3:
                             res = self.model(flabel_window, fimage_window, mdose_window)
                         elif len(self.args.input) == 1:
                             res = self.model(fimage_window)

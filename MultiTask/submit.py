@@ -6,9 +6,9 @@ from utils.generate_jobs import submit_job
 setting = dict()
 setting['cluster_manager'] = 'Slurm'
 setting['NumberOfGPU'] = 1
-setting['cluster_MemPerCPU'] = 9500
-setting['cluster_NumberOfCPU'] = 10           # Number of CPU per job
-setting['cluster_NodeList'] = 'res-hpc-lkeb05' # ['res-hpc-gpu01','res-hpc-gpu02','res-hpc-lkeb03',---,'res-hpc-lkeb07']
+setting['cluster_MemPerCPU'] = 7500
+setting['cluster_NumberOfCPU'] = 3          # Number of CPU per job
+setting['cluster_NodeList'] = 'res-hpc-lkeb07' # ['res-hpc-gpu01','res-hpc-gpu02','res-hpc-lkeb03',---,'res-hpc-lkeb07']
 
 
 if 'lkeb' in setting['cluster_NodeList']:
@@ -51,9 +51,9 @@ experiments_dict['doseprediction_d'] ={'model_name':'Dose_Samp', 'task':'Single-
 experiments_dict['doseprediction_e'] ={'model_name':'Dose_Samp', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
                                      'input':'Dm', 'task_ids': ['dose'], 'num_featurmaps': [23, 45, 91], 'num_classes':3}
 
-exp = experiments_dict['doseprediction_a']
+exp = experiments_dict['doseprediction_d']
 exp['is_debug'] = False
-is_local = True
+is_local = False
 exp['mode'] = 'eval'       #['train', 'inference', 'eval']
 
 base_json_script = '/exports/lkeb-hpc/tlandman/Thesis/MultiTask/configs/base_args.json'
