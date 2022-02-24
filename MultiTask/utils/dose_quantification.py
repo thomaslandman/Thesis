@@ -1,6 +1,7 @@
 import numpy as np
+import sys
+sys.path.append('/exports/lkeb-hpc/tlandman/tf.14/lib/python3.6/site-packages/')
 import SimpleITK as sitk
-from scipy.ndimage.filters import generic_filter
 from pymedphys import gamma
 
 def gamma_pass(groundtruth_dose, predicted_dose, groundtruth_contours, distance=2, threshold=2):
@@ -11,16 +12,106 @@ def gamma_pass(groundtruth_dose, predicted_dose, groundtruth_contours, distance=
     dims = groundtruth_dose.GetSize()
     origin = groundtruth_dose.GetOrigin()
     spacing = groundtruth_dose.GetSpacing()
-    print(dims)
-    print(origin)
-    print(spacing)
     x = np.linspace(origin[0], origin[0] + spacing[0] * (dims[0] - 1), dims[0])
     y = np.linspace(origin[1], origin[0] + spacing[1] * (dims[1] - 1), dims[1])
     z = np.linspace(origin[2], origin[2] + spacing[2] * (dims[2] - 1), dims[2])
     axes = (z, y, x)
 
-gamma_pass()
+    dose = sitk.GetArrayFromImage(groundtruth_dose)
+    dose_pred = sitk.GetArrayFromImage(predicted_dose)
+    contours = sitk.GetArrayFromImage(groundtruth_contours)
 
+    gamma_map = gamma(axes, dose, axes, dose_pred, threshold, distance, lower_percent_dose_cutoff=0.01,
+                      interp_fraction=2, local_gamma=False, max_gamma=1, skip_once_passed=True, quiet=True)
+
+    gamma_pass = np.where(gamma_map < 1, True, False)
+
+    dose_mask = np.invert(np.isnan(gamma_map))
+    gtv_mask = np.where(contours == 4, True, False)
+    sv_mask = np.where(contours == 3, True, False)
+    rectum_mask = np.where(contours == 2, True, False)
+    bladder_mask = np.where(contours == 1, True, False)
+
+    dose_gamma = np.count_nonzero(gamma_pass[dose_mask]) / np.size(gamma_pass[dose_mask])
+    gtv_gamma = np.count_nonzero(gamma_pass[gtv_mask]) / np.size(gamma_pass[gtv_mask & dose_mask])
+    sv_gamma = np.count_nonzero(gamma_pass[sv_mask]) / np.size(gamma_pass[sv_mask & dose_mask])
+    rectum_gamma = np.count_nonzero(gamma_pass[rectum_mask]) / np.size(gamma_pass[rectum_mask & dose_mask])
+    bladder_gamma = np.count_nonzero(gamma_pass[bladder_mask]) / np.size(gamma_pass[bladder_mask & dose_mask])
+
+    return dose_gamma, gtv_gamma, sv_gamma, rectum_gamma, bladder_gamma
+
+def Vx_target(groundtruth_dose, predicted_dose, groundtruth_contours):
+    dose = sitk.GetArrayFromImage(groundtruth_dose)
+    dose_pred = sitk.GetArrayFromImage(predicted_dose)
+    contours = sitk.GetArrayFromImage(groundtruth_contours)
+
+    gtv_dose = dose[np.where(contours == 4, True, False)]
+    sv_dose = dose[np.where(contours == 3, True, False)]
+    gtv_dose_pred = dose_pred[np.where(contours == 4, True, False)]
+    sv_dose_pred = dose_pred[np.where(contours == 3, True, False)]
+
+    V95_gtv_ref = np.sum(gtv_dose >= 74 * 0.95) / np.size(gtv_dose)
+    V110_gtv_ref = np.sum(gtv_dose <= 74 * 1.10) / np.size(gtv_dose)
+    V95_sv_ref = np.sum(sv_dose >= 55 * 0.95) / np.size(sv_dose)
+    V110_sv_ref = np.sum(sv_dose <= 55 * 1.10) / np.size(sv_dose)
+
+    V95_gtv_pred = np.sum(gtv_dose_pred >= 74 * 0.95) / np.size(gtv_dose_pred)
+    V110_gtv_pred = np.sum(gtv_dose_pred <= 74 * 1.10) / np.size(gtv_dose_pred)
+    V95_sv_pred = np.sum(sv_dose_pred >= 55 * 0.95) / np.size(sv_dose_pred)
+    V110_sv_pred = np.sum(sv_dose_pred <= 55 * 1.10) / np.size(sv_dose_pred)
+
+    V95_gtv = (V95_gtv_ref - V95_gtv_pred) / V95_gtv_ref
+    V110_gtv = (V110_gtv_ref - V110_gtv_pred) / V110_gtv_ref
+    V95_sv = (V95_sv_ref - V95_sv_pred) / V95_sv_ref
+    V110_sv = (V110_sv_ref - V110_sv_pred) / V110_sv_ref
+
+    return V95_gtv, V110_gtv, V95_sv, V110_sv
+
+def Dx_oar(groundtruth_dose, predicted_dose, groundtruth_contours):
+    dose = sitk.GetArrayFromImage(groundtruth_dose)
+    dose_pred = sitk.GetArrayFromImage(predicted_dose)
+    contours = sitk.GetArrayFromImage(groundtruth_contours)
+
+    rectum_dose_ref = dose[np.where(contours == 2, True, False)]
+    bladder_dose_ref = dose[np.where(contours == 1, True, False)]
+    rectum_dose_pred = dose_pred[np.where(contours == 2, True, False)]
+    bladder_dose_pred = dose_pred[np.where(contours == 1, True, False)]
+
+    Dmean_rectum_ref = np.mean(rectum_dose_ref)
+    D2_rectum_ref = np.sort(rectum_dose_ref.flatten())[int(-np.size(rectum_dose_ref) * 0.02)]
+    Dmean_bladder_ref = np.mean(bladder_dose_ref)
+    D2_bladder_ref = np.sort(bladder_dose_ref.flatten())[int(-np.size(bladder_dose_ref) * 0.02)]
+
+    Dmean_rectum_pred = np.mean(rectum_dose_pred)
+    D2_rectum_pred = np.sort(rectum_dose_pred.flatten())[int(-np.size(rectum_dose_pred) * 0.02)]
+    Dmean_bladder_pred = np.mean(bladder_dose_pred)
+    D2_bladder_pred = np.sort(bladder_dose_pred.flatten())[int(-np.size(bladder_dose_pred) * 0.02)]
+
+    Dmean_rectum = (Dmean_rectum_ref - Dmean_rectum_pred) / Dmean_rectum_ref
+    D2_rectum = (D2_rectum_ref - D2_rectum_pred) / D2_rectum_ref
+    Dmean_bladder = (Dmean_bladder_ref - Dmean_bladder_pred) / Dmean_bladder_ref
+    D2_bladder = (D2_bladder_ref - D2_bladder_pred) / D2_bladder_ref
+
+    return Dmean_rectum, D2_rectum, Dmean_bladder, D2_bladder
+
+
+
+
+
+pred_dose_path = '/exports/lkeb-hpc/tlandman/Thesis/MultiTask/experiments/Single-Task/Dose_input_Sf_If/output/HMC/Patient_22/visit_20071102/Dose.mha'
+dose_path = '/exports/lkeb-hpc/tlandman/Data/Patient_MHA/Patient_22/visit_20071102/Dose.mha'
+cont_path = '/exports/lkeb-hpc/tlandman/Data/Patient_MHA/Patient_22/visit_20071102/Segmentation.mha'
+reader = sitk.ImageFileReader()
+reader.SetImageIO("MetaImageIO")
+reader.SetFileName(pred_dose_path)
+pred_dose = reader.Execute()
+reader.SetFileName(dose_path)
+dose = reader.Execute()
+reader.SetFileName(cont_path)
+cont = reader.Execute()
+# gamma_pass(dose, pred_dose, cont)
+# Vx_target(dose, pred_dose, cont)
+# Dx_oar(dose, pred_dose, cont)
 
 
 # def gamma_pass_rate(groundtruth_dose, predicted_dose, groundtruth_contours, distance=2, threshold=2):

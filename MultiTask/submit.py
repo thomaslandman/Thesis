@@ -8,7 +8,7 @@ setting['cluster_manager'] = 'Slurm'
 setting['NumberOfGPU'] = 1
 setting['cluster_MemPerCPU'] = 7500
 setting['cluster_NumberOfCPU'] = 3          # Number of CPU per job
-setting['cluster_NodeList'] = 'res-hpc-lkeb07' # ['res-hpc-gpu01','res-hpc-gpu02','res-hpc-lkeb03',---,'res-hpc-lkeb07']
+setting['cluster_NodeList'] = 'res-hpc-lkeb03' # ['res-hpc-gpu01','res-hpc-gpu02','res-hpc-lkeb03',---,'res-hpc-lkeb07']
 
 
 if 'lkeb' in setting['cluster_NodeList']:
@@ -54,7 +54,7 @@ experiments_dict['doseprediction_e'] ={'model_name':'Dose_Samp', 'task':'Single-
 exp = experiments_dict['doseprediction_d']
 exp['is_debug'] = False
 is_local = False
-exp['mode'] = 'eval'       #['train', 'inference', 'eval']
+exp['mode'] = 'inference'       #['train', 'inference', 'eval']
 
 base_json_script = '/exports/lkeb-hpc/tlandman/Thesis/MultiTask/configs/base_args.json'
 script_address = '/exports/lkeb-hpc/tlandman/Thesis/MultiTask/main.py'
