@@ -2,6 +2,10 @@ import os.path
 import subprocess
 import SimpleITK as sitk
 import shutil
+import numpy as np
+from SpatialTransformer import SpatialTransformer
+import torch
+import matplotlib.pyplot as plt
 
 
 def transform_affine():
@@ -83,6 +87,53 @@ def loop_scans():
             # shutil.copyfile(source, destination)
             os.rename(source, destination)
 
+def loop_output_scans():
+    data_dir = "/exports/lkeb-hpc/tlandman/Thesis/MultiTask/experiments/Single-Task/Reg_input_If_Im_Sm/output/HMC/"
+    out_dir = '/exports/lkeb-hpc/tlandman/Thesis/MultiTask/experiments/Single-Task/Dose_input_Dm_DVF/output/HMC/'
+
+    patient_list = sorted(f for f in os.listdir(data_dir) if os.path.isdir(os.path.join(data_dir, f)))
+    for patient_idx in range(0, len(patient_list)):
+        patient_dir = os.path.join(data_dir, patient_list[patient_idx])
+        out_pat_dir = os.path.join(out_dir, patient_list[patient_idx])
+        if not os.path.exists(out_pat_dir):
+            os.mkdir(out_pat_dir)
+        scan_list = sorted([f for f in os.listdir(patient_dir) if os.path.isdir(os.path.join(patient_dir, f))])
+        for scan_idx in range(1, 2): #len(scan_list)):
+            # if scan_idx == 1:
+            #     continue
+            dvf_path = os.path.join(patient_dir, scan_list[scan_idx], 'DVF.mha')
+            planning_dose_path = os.path.join('/exports/lkeb-hpc/tlandman/Data/Patient_MHA/', patient_list[patient_idx], scan_list[scan_idx], 'planning/Planning_Dose.mha')
+
+            reader = sitk.ImageFileReader()
+            reader.SetImageIO("MetaImageIO")
+            reader.SetFileName(dvf_path)
+            dvf_itk = reader.Execute()
+            dvf = torch.Tensor(np.transpose(np.expand_dims(sitk.GetArrayFromImage(dvf_itk), 0), (0, 4, 1, 2, 3)))
+            reader.SetFileName(planning_dose_path)
+            dose_itk = reader.Execute()
+            dose = torch.Tensor(np.expand_dims(np.expand_dims(sitk.GetArrayFromImage(dose_itk), 0), 0))
+            spatial_transform = SpatialTransformer(dim=1)
+            dose_transform = spatial_transform(dose, dvf)
+
+            dose_transform = np.squeeze(dose_transform.numpy())
+            dose_transform_itk = sitk.GetImageFromArray(dose_transform)
+            dose_transform_itk.SetOrigin(dose_itk.GetOrigin())
+            dose_transform_itk.SetSpacing(dose_itk.GetSpacing())
+
+            writer = sitk.ImageFileWriter()
+            trans_dir = os.path.join('/exports/lkeb-hpc/tlandman/Thesis/MultiTask/experiments/Single-Task/Dose_input_Dm_DVF/output/HMC/', patient_list[patient_idx], scan_list[scan_idx])
+            if not os.path.exists(trans_dir):
+                os.mkdir(trans_dir)
+            trans_file = os.path.join(trans_dir, 'Dose.mha')
+            writer.SetFileName(trans_file)
+            writer.Execute(dose_transform_itk)
+
+            print(patient_list[patient_idx], scan_list[scan_idx])
+
+
+
+
+loop_output_scans()
 # loop_scans()
 # transform_affine()
 

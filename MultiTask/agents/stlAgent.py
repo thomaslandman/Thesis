@@ -174,7 +174,7 @@ class stlAgent(BaseAgent):
             elif 'Sf' in self.args.input and len(self.args.input) == 2:
                 res = self.model(data_dict['flabel'], data_dict['fimage'])
             elif 'Dm' in self.args.input and len(self.args.input) == 1:
-                res = self.model(moving_dose=sampdata_dict['mdose'])
+                res = self.model(moving_dose=data_dict['mdose'])
             elif 'Dm' in self.args.input and len(self.args.input) == 3:
                 res = self.model(data_dict['flabel'], data_dict['fimage'], data_dict['mdose'])
             elif len(self.args.input) == 1:
