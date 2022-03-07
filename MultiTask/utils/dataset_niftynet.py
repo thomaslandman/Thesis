@@ -83,7 +83,7 @@ def set_dataParam(args, config):
     if 'fixed_dose' in args.input_list:
         data_param['fixed_dose'] = ParserNamespace(csv_file=config.csv_fixed_dose,
                                                            spatial_window_size=args.patch_size,
-                                                           pixdim=args.voxel_dim, interp_order=0)
+                                                           pixdim=args.voxel_dim, interp_order=3)
 
 
     if 'moving_image' in args.input_list:
@@ -117,7 +117,7 @@ def set_dataParam(args, config):
     if 'moving_dose' in args.input_list:
         data_param['moving_dose'] = ParserNamespace(csv_file=config.csv_moving_dose,
                                                            spatial_window_size=args.patch_size,
-                                                           pixdim=args.voxel_dim, interp_order=0)
+                                                           pixdim=args.voxel_dim, interp_order=3)
 
 
 

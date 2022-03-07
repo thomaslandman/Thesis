@@ -63,6 +63,8 @@ class UNet(nn.Module):
         for i, (up, res) in enumerate(zip(self.up_path, self.res_list)):
 
             if i == 0:
+                # if self.args.depth == 4:
+                #     x = F.interpolate(x, scale_factor=2.0, mode='trilinear', align_corners=True)
                 out.append(res(x))
                 x = up(x, blocks[-i - 1])
             else:
@@ -101,9 +103,12 @@ class UpBlock(nn.Module):
 
     def forward(self, x, skip):
         x_up_conv = F.interpolate(x, scale_factor=2.0, mode='trilinear', align_corners=True)
-        lower = int((skip.shape[2] - x_up_conv.shape[2]) / 2)
-        upper = int(skip.shape[2] - lower)
-        cropped = skip[:, :, lower:upper, lower:upper, lower:upper]
+        if skip.shape[2] < x_up_conv.shape[2]:
+            cropped = F.pad(skip, (1,1,1,1,1,1))
+        else:
+            lower = int((skip.shape[2] - x_up_conv.shape[2]) / 2)
+            upper = int(skip.shape[2] - lower)
+            cropped = skip[:, :, lower:upper, lower:upper, lower:upper]
         out = torch.cat([x_up_conv, cropped], 1)
         out = self.conv_block(out)
         return out

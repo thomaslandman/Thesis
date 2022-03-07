@@ -2,6 +2,43 @@ import matplotlib.cm as cm
 import numpy as np
 import matplotlib.pyplot as plt
 from load_data import read_mha
+import pandas as pd
+from scipy.interpolate import make_interp_spline, BSpline
+
+
+
+def get_loss(csv_path):
+    df = pd.read_csv(csv_path)
+    loss = df.to_numpy()
+    prev_epoch = 74
+    train_loss = []
+    val_loss = []
+    for i in range(np.shape(loss)[0]):
+        if loss[i,1] == prev_epoch:
+            val_loss.append([loss[i,1], loss[i,2]])
+        else:
+            train_loss.append([loss[i,1], loss[i,2]])
+        prev_epoch = loss[i,1]
+    return np.array(train_loss), np.array(val_loss)
+
+
+
+
+csv_path = '/home/tlandman/Downloads/Sf_If_Dm'
+train_loss, val_loss = get_loss(csv_path)
+
+plt.plot(train_loss[:,0], train_loss[:,1], label='Training Loss')
+plt.plot(val_loss[:,0], val_loss[:,1], label='Validation Loss')
+plt.ylim(0,50)
+plt.legend()
+plt.show()
+
+
+
+
+
+
+
 
 def show_CT(fig, ax, CT=None, dose=None, cont=None, slice=50, title=None):
     ax.imshow(CT[slice, :, :], cmap='binary_r')
@@ -63,28 +100,28 @@ def show_diff(fig, ax, CT, diff, cont=None, slice=50, lim=10, title=None):
 
 
 def planning_daily_dose():
-    daily_CT = read_mha('/exports/lkeb-hpc/tlandman/Data/Patient_MHA/Patient_22/visit_20071102/CTImage.mha')
-    daily_cont = read_mha('/exports/lkeb-hpc/tlandman/Data/Patient_MHA/Patient_22/visit_20071102/Segmentation.mha')
-    daily_dose = read_mha('/exports/lkeb-hpc/tlandman/Data/Patient_MHA/Patient_22/visit_20071102/Dose.mha')
+    daily_CT = read_mha('/exports/lkeb-hpc/tlandman/Data/Patient_MHA/Patient_22/visit_20071010/CTImage.mha')
+    daily_cont = read_mha('/exports/lkeb-hpc/tlandman/Data/Patient_MHA/Patient_22/visit_20071010/Segmentation.mha')
+    daily_dose = read_mha('/exports/lkeb-hpc/tlandman/Data/Patient_MHA/Patient_22/visit_20071010/Dose.mha')
     affine_dose = read_mha('/exports/lkeb-hpc/tlandman/Data/Patient_MHA/Patient_22/visit_20071102/planning/Planning_Dose.mha')
     affine_cont = read_mha('/exports/lkeb-hpc/tlandman/Data/Patient_MHA/Patient_22/visit_20071102/planning/Planning_Segmentation.mha')
     affine_CT = read_mha('/exports/lkeb-hpc/tlandman/Data/Patient_MHA/Patient_22/visit_20071102/planning/Planning_CTImage.mha')
     planning_dose = read_mha('/exports/lkeb-hpc/tlandman/Data/Patient_MHA/Patient_22/visit_20071022/Dose.mha')
     planning_cont = read_mha('/exports/lkeb-hpc/tlandman/Data/Patient_MHA/Patient_22/visit_20071022/Segmentation.mha')
     planning_CT = read_mha('/exports/lkeb-hpc/tlandman/Data/Patient_MHA/Patient_22/visit_20071022/CTImage.mha')
-    predicted_dose = read_mha('/exports/lkeb-hpc/tlandman/Thesis/MultiTask/experiments/Single-Task/Dose_input_Sf_If/output/HMC/Patient_22/visit_20071102/Dose.mha')
+    predicted_dose = read_mha('/exports/lkeb-hpc/tlandman/Thesis/MultiTask/experiments/Single-Task/Dose_input_Dm_DVF/output/HMC/Patient_22/visit_20071010/Dose.mha')
 
     fig, axs = plt.subplots(2 ,2)
     # fig.suptitle('Comparing the daily scan with the registered planning scan')
-    axs[0, 0] = show_CT(fig, axs[0, 0], daily_CT, dose=daily_dose, cont=daily_cont, slice=60,
+    axs[0, 0] = show_CT(fig, axs[0, 0], daily_CT, dose=daily_dose, cont=daily_cont, slice=50,
                         title='Ground Truth Dose [Gy]')
-    axs[0, 1] = show_CT(fig, axs[0, 1], daily_CT, dose=predicted_dose, cont=daily_cont, slice=60,
+    axs[0, 1] = show_CT(fig, axs[0, 1], daily_CT, dose=predicted_dose, cont=daily_cont, slice=50,
                         title='Predicted Dose [Gy]')
     diff_dose = daily_dose - predicted_dose
-    axs[1, 0] = show_diff(fig, axs[1, 0], daily_CT, diff=diff_dose, cont=daily_cont, lim=15, slice=60,
+    axs[1, 0] = show_diff(fig, axs[1, 0], daily_CT, diff=diff_dose, cont=daily_cont, lim=15, slice=50,
                         title='Difference [Gy]')
     # axs[1, 1] = show_CT(fig, axs[1, 1], affine_CT, dose=affine_dose, cont=affine_cont, slice=60,
     #                     title='Registered Planning Scan')
     plt.show()
 
-planning_daily_dose()
+# planning_daily_dose()
