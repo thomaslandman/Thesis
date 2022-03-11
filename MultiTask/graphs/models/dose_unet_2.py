@@ -1,9 +1,10 @@
 import torch
 import torch.nn as nn
+import matplotlib.pyplot as plt
 from . import unet
 
 
-class DoseNet(nn.Module):
+class DoseNet_2(nn.Module):
     '''
     CNN segmentation network.
     Parameters
@@ -32,7 +33,7 @@ class DoseNet(nn.Module):
                               initial_channels=initial_channels, channels_list= channels_list)
 
 
-    def forward(self, fixed_segmentation=None, fixed_image=None, moving_dose=None):
+    def forward(self, fixed_segmentation=None, fixed_image=None, moving_dose=None, fixed_torso=None):
         '''
         Parameters
         ----------
@@ -53,11 +54,12 @@ class DoseNet(nn.Module):
             input_image = torch.cat((fixed_segmentation, fixed_image), dim=1) # (n, 1, d, h, w)
 
         elif True:    #change later not a good method of showing to use this one
-            target = torch.where(fixed_segmentation == 4, 1, 0)
-            target = torch.where(fixed_segmentation == 3, 2, target)
+            gtv = torch.where(fixed_segmentation == 4, 1, 0)
+            sv = torch.where(fixed_segmentation == 3, 1, 0)
+
             oar = torch.where(fixed_segmentation == 2, 1, 0)
             oar = torch.where(fixed_segmentation == 1, 2, oar)
-            input_image = torch.cat((target, oar, fixed_image, moving_dose), dim=1)  # (n, 1, d, h, w)
+            input_image = torch.cat((gtv, sv, oar, fixed_torso, fixed_image, moving_dose), dim=1)  # (n, 1, d, h, w)
 
         else:
             input_image = torch.cat((fixed_segmentation, fixed_image, moving_dose), dim=1)  # (n, 1, d, h, w)

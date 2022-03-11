@@ -12,6 +12,7 @@ from graphs.losses.loss import *
 from graphs.models.regnet import RegNet
 from graphs.models.segnet import SegNet
 from graphs.models.dose_unet import DoseNet
+from graphs.models.dose_unet_2 import DoseNet_2
 from utils import dataset_niftynet as dset_utils
 from utils.SpatialTransformer import SpatialTransformer
 from utils.model_util import count_parameters
@@ -64,7 +65,12 @@ class stlAgent(BaseAgent):
                 self.spatial_transform = SpatialTransformer(dim=self.args.num_classes)
 
             elif self.args.network == 'Dose':
-                self.model = DoseNet(in_channels=len(self.args.input), classes=1,
+                if len(self.args.input) == 4:
+                    self.model = DoseNet_2(in_channels=len(self.args.input)+2, classes=1,
+                                     depth=self.args.depth, initial_channels=self.args.initial_channels,
+                                     channels_list=self.args.num_featurmaps).to(self.args.device)
+                else:
+                    self.model = DoseNet(in_channels=len(self.args.input) + 1, classes=1,
                                      depth=self.args.depth, initial_channels=self.args.initial_channels,
                                      channels_list=self.args.num_featurmaps).to(self.args.device)
                 self.mse_loss = nn.MSELoss().to(self.args.device)
@@ -159,13 +165,13 @@ class stlAgent(BaseAgent):
         running_ncc = 0.
         epoch_samples = 0
 
-        for batch_idx, (fimage, flabel, fdose, mimage, mlabel, mdose) in enumerate(self.dataloaders['training'], 1):  # add dose to back
+        for batch_idx, (fimage, flabel, fdose, ftorso, mimage, mlabel, mdose) in enumerate(self.dataloaders['training'], 1):  # add dose to back
             # switch model to training mode, clear gradient accumulators
             self.model.train()
             self.optimizer.zero_grad()
             self.model.zero_grad()
 
-            data_dict = clean_data(fimage, flabel, fdose, mimage, mlabel, mdose, self.args) #add dose to back
+            data_dict = clean_data(fimage, flabel, fdose, ftorso, mimage, mlabel, mdose, self.args) #add dose to back
             nbatches, wsize, nchannels, x, y, z, _ = fimage.size()
 
             # forward pass
@@ -177,6 +183,8 @@ class stlAgent(BaseAgent):
                 res = self.model(moving_dose=data_dict['mdose'])
             elif 'Dm' in self.args.input and len(self.args.input) == 3:
                 res = self.model(data_dict['flabel'], data_dict['fimage'], data_dict['mdose'])
+            elif 'Dm' in self.args.input and len(self.args.input) == 4:
+                res = self.model(data_dict['flabel'], data_dict['fimage'], data_dict['mdose'], data_dict['ftorso'])
             elif len(self.args.input) == 1:
                 res = self.model(data_dict['fimage'])
             elif len(self.args.input) == 2 and 'Im' in self.args.input:
@@ -311,8 +319,8 @@ class stlAgent(BaseAgent):
         with torch.no_grad():
 
             # Iterate over data
-            for batch_idx, (fimage, flabel, fdose, mimage, mlabel, mdose) in enumerate(self.dataloaders['validation'], 1):
-                data_dict = clean_data(fimage, flabel, fdose, mimage, mlabel, mdose, self.args) # ??? add dose
+            for batch_idx, (fimage, flabel, fdose, ftorso, mimage, mlabel, mdose) in enumerate(self.dataloaders['validation'], 1):
+                data_dict = clean_data(fimage, flabel, fdose, ftorso, mimage, mlabel, mdose, self.args) # ??? add dose
                 nbatches, wsize, nchannels, x, y, z, _ = fimage.size()
 
                 # forward pass
@@ -324,6 +332,8 @@ class stlAgent(BaseAgent):
                     res = self.model(data_dict['mdose'])
                 elif 'Dm' in self.args.input and len(self.args.input) == 3:
                     res = self.model(data_dict['flabel'], data_dict['fimage'], data_dict['mdose'])
+                elif 'Dm' in self.args.input and len(self.args.input) == 4:
+                    res = self.model(data_dict['flabel'], data_dict['fimage'], data_dict['mdose'], data_dict['ftorso'])
                 elif len(self.args.input) == 1:
                     res = self.model(data_dict['fimage'])
                 elif len(self.args.input) == 2 and 'Im' in self.args.input:
@@ -467,6 +477,7 @@ class stlAgent(BaseAgent):
 
                 fimage = data['fixed_image'][..., 0, :]
                 flabel = data['fixed_segmentation'][..., 0, :]
+                ftorso = data['fixed_torso'][..., 0, :]
                 mimage = data['moving_image'][..., 0, :]
                 mlabel = data['moving_segmentation'][..., 0, :]
                 mdose = data['moving_dose'][..., 0, :]
@@ -481,6 +492,7 @@ class stlAgent(BaseAgent):
 
                 fimage = np.expand_dims(fimage, axis=0)
                 flabel = np.expand_dims(flabel, axis=0)
+                ftorso = np.expand_dims(ftorso, axis=0)
                 mimage = np.expand_dims(mimage, axis=0)
                 mlabel = np.expand_dims(mlabel, axis=0)
                 mdose = np.expand_dims(mdose, axis=0)
@@ -491,6 +503,7 @@ class stlAgent(BaseAgent):
 
                 fimage_padded = np.pad(fimage, padding, mode='constant', constant_values=fimage.min())
                 flabel_padded = np.pad(flabel, padding, mode='constant', constant_values=flabel.min())
+                ftorso_padded = np.pad(ftorso, padding, mode='constant', constant_values=ftorso.min())
                 mimage_padded = np.pad(mimage, padding, mode='constant', constant_values=mimage.min())
                 mlabel_padded = np.pad(mlabel, padding, mode='constant', constant_values=mlabel.min())
                 mdose_padded = np.pad(mdose, padding, mode='constant', constant_values=mlabel.min())
@@ -514,12 +527,14 @@ class stlAgent(BaseAgent):
 
                     fimage_window = fimage_padded[tuple(slicer)]
                     flabel_window = flabel_padded[tuple(slicer)]
+                    ftorso_window = ftorso_padded[tuple(slicer)]
                     mimage_window = mimage_padded[tuple(slicer)]
                     mlabel_window = mlabel_padded[tuple(slicer)]
                     mdose_window = mdose_padded[tuple(slicer)]
 
                     fimage_window = torch.tensor(np.transpose(fimage_window, (0, 4, 1, 2, 3))).to(self.args.device)  # BxCxDxWxH
                     flabel_window = torch.tensor(np.transpose(flabel_window, (0, 4, 1, 2, 3))).to(self.args.device)  # BxCxDxWxH
+                    ftorso_window = torch.tensor(np.transpose(ftorso_window, (0, 4, 1, 2, 3))).to(self.args.device)  # BxCxDxWxH
                     mimage_window = torch.tensor(np.transpose(mimage_window, (0, 4, 1, 2, 3))).to(self.args.device)  # BxCxDxWxH
                     mlabel_window = torch.tensor(np.transpose(mlabel_window, (0, 4, 1, 2, 3))).to(self.args.device)  # BxCxDxWxH
                     mdose_window = torch.tensor(np.transpose(mdose_window, (0, 4, 1, 2, 3))).to(self.args.device)  # BxCxDxWxH
@@ -534,6 +549,8 @@ class stlAgent(BaseAgent):
                             res = self.model(mdose_window)
                         elif 'Dm' in self.args.input and len(self.args.input) == 3:
                             res = self.model(flabel_window, fimage_window, mdose_window)
+                        elif 'Dm' in self.args.input and len(self.args.input) == 4:
+                            res = self.model(flabel_window, fimage_window, mdose_window, ftorso_window)
                         elif len(self.args.input) == 1:
                             res = self.model(fimage_window)
                         elif len(self.args.input) == 2 and 'Im' in self.args.input:

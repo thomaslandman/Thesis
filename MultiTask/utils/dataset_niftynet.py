@@ -32,6 +32,7 @@ class DatasetNiftySampler(Dataset):
         fimage = np.transpose(data['fixed_image'], (0, 5, 1, 2, 3, 4))
         flabel = np.transpose(data['fixed_segmentation'], (0, 5, 1, 2, 3, 4))
         fdose  = np.transpose(data['fixed_dose'], (0, 5, 1, 2, 3, 4))
+        ftorso = np.transpose(data['fixed_torso'], (0, 5, 1, 2, 3, 4))
         mimage = np.transpose(data['moving_image'], (0, 5, 1, 2, 3, 4))
         mlabel = np.transpose(data['moving_segmentation'], (0, 5, 1, 2, 3, 4))
         mdose = np.transpose(data['moving_dose'], (0, 5, 1, 2, 3, 4))
@@ -42,7 +43,7 @@ class DatasetNiftySampler(Dataset):
         mlabel = torch.from_numpy(mlabel).float()
         mdose  = torch.from_numpy(mdose).float()
 
-        return fimage, flabel, fdose, mimage, mlabel, mdose
+        return fimage, flabel, fdose, ftorso, mimage, mlabel, mdose
 
     def __len__(self):
         return len(self.sampler.reader.output_list)
@@ -78,6 +79,10 @@ def set_dataParam(args, config):
                                                            pixdim=args.voxel_dim, interp_order=0)
     if 'fixed_gtv' in args.input_list:
         data_param['fixed_gtv'] = ParserNamespace(csv_file=config.csv_fixed_segmentation_gtv,
+                                                           spatial_window_size=args.patch_size,
+                                                           pixdim=args.voxel_dim, interp_order=0)
+    if 'fixed_torso' in args.input_list:
+        data_param['fixed_torso'] = ParserNamespace(csv_file=config.csv_fixed_torso,
                                                            spatial_window_size=args.patch_size,
                                                            pixdim=args.voxel_dim, interp_order=0)
     if 'fixed_dose' in args.input_list:
@@ -156,7 +161,7 @@ def get_sampler(args, image_reader, phase):
         for i in range(len(args.input_list)):
             window_sizes[args.input_list[i]] = args.patch_size
 
-        sampler = bs(image_reader, window_sizes=args.patch_size, queue_length =40, windows_per_image=args.windows_per_volume)
+        sampler = bs(image_reader, window_sizes=args.patch_size, queue_length =8, windows_per_image=args.windows_per_volume)
 
     elif phase == 'inference':
         sampler = GridSampler(image_reader,

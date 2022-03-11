@@ -77,15 +77,21 @@ def loop_scans():
     for patient_idx in range(0, len(patient_list)):
         patient_dir = os.path.join(data_dir, patient_list[patient_idx])
         scan_list = sorted([f for f in os.listdir(patient_dir) if os.path.isdir(os.path.join(patient_dir, f))])
+        print(patient_list[patient_idx])
         for scan_idx in range(0, len(scan_list)):
             if scan_idx == 1:
                 continue
             scan_dir = os.path.join(patient_dir, scan_list[scan_idx])
 
-            source = os.path.join(scan_dir, 'planning/CTImage.mha')
-            destination = os.path.join(scan_dir, 'planning/Planning_CTImage.mha')
-            # shutil.copyfile(source, destination)
-            os.rename(source, destination)
+            reader = sitk.ImageFileReader()
+            reader.SetImageIO("MetaImageIO")
+            file = os.path.join(scan_dir, 'planning/Planning_CTImage.mha')
+            reader.SetFileName(file)
+            image = reader.Execute()
+            test = np.array(sitk.GetArrayFromImage(image), dtype=type)
+            if np.shape(test)[0]==280:
+                print(patient_list[patient_idx])
+                print(scan_list[scan_idx])
 
 def loop_output_scans():
     data_dir = "/exports/lkeb-hpc/tlandman/Thesis/MultiTask/experiments/Single-Task/Reg_input_If_Im_Sm/output/HMC/"
@@ -129,11 +135,69 @@ def loop_output_scans():
             writer.Execute(dose_transform_itk)
 
             print(patient_list[patient_idx], scan_list[scan_idx])
+def make_2D_masks():
+    ## in create masks ##
+    mask = np.zeros(np.shape(cont))
+    coords = np.where(np.any(cont == 4, axis=2))
+    for i in range(np.shape(coords)[1]):
+        mask[coords[0][i], coords[1][i], :] = 1
+    coords = np.where(np.any(cont==3, axis=2))
+    for i in range(np.shape(coords)[1]):
+        mask[coords[0][i], coords[1][i], :] = 2
+    file = os.path.join(scan_dir, 'masks/Torso.mha')
+    reader.SetFileName(file)
+    image = reader.Execute()
+    torso = sitk.GetArrayFromImage(image)
+    mask = np.where((torso == 1) & ((mask == 1) | (mask == 2)), mask, 0)
+    mask = np.array(mask, dtype=np.uint8)
+    mask_itk = sitk.GetImageFromArray(mask)
+    writer = sitk.ImageFileWriter()
+    mask_file = os.path.join(scan_dir, 'target_mask.mha')
+    writer.SetFileName(mask_file)
+    writer.Execute(mask_itk)
+
+
+def create_masks():
+    data_dir = "/exports/lkeb-hpc/tlandman/Data/Patient_MHA/"
+    patient_list = sorted(os.listdir(data_dir))
+    for patient_idx in range(0, len(patient_list)):
+        patient_dir = os.path.join(data_dir, patient_list[patient_idx])
+        scan_list = sorted([f for f in os.listdir(patient_dir) if os.path.isdir(os.path.join(patient_dir, f))])
+        print(patient_list[patient_idx])
+        for scan_idx in range(0, len(scan_list)):
+            if scan_idx == 1:
+                continue
+            scan_dir = os.path.join(patient_dir, scan_list[scan_idx])
+
+            reader = sitk.ImageFileReader()
+            reader.SetImageIO("MetaImageIO")
+            file = os.path.join(scan_dir, 'Dose.mha')
+            reader.SetFileName(file)
+            image = reader.Execute()
+            dose = np.array(sitk.GetArrayFromImage(image))
+            file = os.path.join(scan_dir, 'Segmentation.mha')
+            reader.SetFileName(file)
+            image = reader.Execute()
+            cont = np.array(sitk.GetArrayFromImage(image))
+            samp = np.zeros(np.shape(cont))
+            samp[:, :, :256] = 1
+            samp[:, :, 256:] = 2
+            samp = np.where(dose < 5, 0, samp)
+            samp = np.where(cont == 4, 3, samp)
+            samp = np.where(cont == 3, 4, samp)
+            samp = np.array(samp, dtype=np.uint8)
+            # plt.imshow(samp[50,:,:])
+            # plt.show()
+            samp_itk = sitk.GetImageFromArray(samp)
+            writer = sitk.ImageFileWriter()
+            mask_file = os.path.join(scan_dir, 'Sampler_New_2.mha')
+            writer.SetFileName(mask_file)
+            writer.Execute(samp_itk)
 
 
 
-
-loop_output_scans()
+create_masks()
+# loop_output_scans()
 # loop_scans()
 # transform_affine()
 

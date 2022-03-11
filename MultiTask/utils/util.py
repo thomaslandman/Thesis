@@ -49,12 +49,13 @@ def resize_image_mlvl(args, image, level):
             (args.mlvl_borders[level]):(args.patch_size[2] - args.mlvl_borders[level])]) \
             [:, :, ::args.mlvl_strides[level], ::args.mlvl_strides[level], ::args.mlvl_strides[level]]
 
-def clean_data(fimage, flabel, fdose, mimage, mlabel, mdose, args):
+def clean_data(fimage, flabel, fdose, ftorso, mimage, mlabel, mdose, args):
     # format the input images in the right format for pytorch model
     nbatches, wsize, nchannels, x, y, z, _ = fimage.size()
     fimage = fimage.view(nbatches * wsize, nchannels, x, y, z).to(args.device)  # (n, 1, d, w, h)
     flabel = flabel.view(nbatches * wsize, nchannels, x, y, z).to(args.device)
     fdose = fdose.view(nbatches * wsize, nchannels, x, y, z).to(args.device)
+    ftorso = ftorso.view(nbatches * wsize, nchannels, x, y, z).to(args.device)
     mimage = mimage.view(nbatches * wsize, nchannels, x, y, z).to(args.device)
     mlabel = mlabel.view(nbatches * wsize, nchannels, x, y, z).to(args.device)
     mdose = mdose.view(nbatches * wsize, nchannels, x, y, z).to(args.device)
@@ -71,6 +72,7 @@ def clean_data(fimage, flabel, fdose, mimage, mlabel, mdose, args):
     # resize the images for different resolutions
     fimage = fimage.to(args.device)  # size B*C*D*W,H
     flabel = flabel.to(args.device).float()
+    ftorso = ftorso.to(args.device).float()
     fdose  = fdose.to(args.device)
     mimage = mimage.to(args.device)  # size B*C*D*W,H
     mlabel = mlabel.to(args.device).float()
@@ -109,7 +111,7 @@ def clean_data(fimage, flabel, fdose, mimage, mlabel, mdose, args):
     mlabel_low_hot = torch.eye(args.num_classes_seg)[mlabel_low.squeeze(1).long()]
     mlabel_low_hot = mlabel_low_hot.permute(0, 4, 1, 2, 3).float().to(args.device)
 
-    data_dict = {'fimage': fimage, 'flabel': flabel, 'fdose': fdose, 'mimage': mimage, 'mlabel': mlabel, 'mdose': mdose,
+    data_dict = {'fimage': fimage, 'flabel': flabel, 'fdose': fdose, 'ftorso': ftorso, 'mimage': mimage, 'mlabel': mlabel, 'mdose': mdose,
                  'fimage_high': fimage_high, 'fimage_mid': fimage_mid, 'fimage_low': fimage_low,
                  'flabel_high':flabel_high, 'flabel_mid':flabel_mid, 'flabel_low':flabel_low,
                  'fdose_high':fdose_high, 'fdose_mid':fdose_mid, 'fdose_low':fdose_low,

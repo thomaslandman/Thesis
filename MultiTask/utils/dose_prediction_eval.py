@@ -42,21 +42,27 @@ class evaluation_dose(object):
                 self.gamma_2_2_rectum = []
                 self.gamma_2_2_bladder = []
 
-                self.gamma_1_1 = []
-                self.gamma_1_1_gtv = []
-                self.gamma_1_1_sv = []
-                self.gamma_1_1_rectum = []
-                self.gamma_1_1_bladder = []
+                self.gamma_3_3 = []
+                self.gamma_3_3_gtv = []
+                self.gamma_3_3_sv = []
+                self.gamma_3_3_rectum = []
+                self.gamma_3_3_bladder = []
 
                 self.V95_gtv = []
                 self.V110_gtv = []
+                self.Dmean_gtv = []
+                self.D95_gtv = []
                 self.V95_sv = []
                 self.V110_sv = []
+                self.Dmean_sv = []
+                self.D95_sv = []
 
                 self.Dmean_rectum = []
                 self.D2_rectum = []
+                self.V45_rectum = []
                 self.Dmean_bladder = []
-                self.D2_bladder= []
+                self.D2_bladder = []
+                self.V45_bladder = []
 
                 self.patient_arr = []
                 self.scan_arr = []
@@ -73,13 +79,13 @@ class evaluation_dose(object):
                     gamma_2_2, gamma_2_2_gtv, gamma_2_2_sv, gamma_2_2_rectum, gamma_2_2_bladder = gamma_pass(
                         groundtruth_dose, predicted_dose, groundtruth_contours, distance=2, threshold=2)
 
-                    gamma_1_1, gamma_1_1_gtv, gamma_1_1_sv, gamma_1_1_rectum, gamma_1_1_bladder = gamma_pass(
-                        groundtruth_dose, predicted_dose, groundtruth_contours, distance=1, threshold=1)
+                    gamma_3_3, gamma_3_3_gtv, gamma_3_3_sv, gamma_3_3_rectum, gamma_3_3_bladder = gamma_pass(
+                        groundtruth_dose, predicted_dose, groundtruth_contours, distance=3, threshold=3)
 
-                    V95_gtv, V110_gtv, V95_sv, V110_sv = Vx_target(groundtruth_dose, predicted_dose,
+                    V95_gtv, V110_gtv, Dmean_gtv, D95_gtv, V95_sv, V110_sv, Dmean_sv, D95_sv = Vx_target(groundtruth_dose, predicted_dose,
                                                                    groundtruth_contours)
 
-                    Dmean_rectum, D2_rectum, Dmean_bladder, D2_bladder = Dx_oar(groundtruth_dose, predicted_dose,
+                    Dmean_rectum, D2_rectum, V45_rectum, Dmean_bladder, D2_bladder, V45_bladder = Dx_oar(groundtruth_dose, predicted_dose,
                                                                    groundtruth_contours)
                     self.patient_arr.append(patient_name)
                     self.scan_arr.append(visit_name)
@@ -90,38 +96,47 @@ class evaluation_dose(object):
                     self.gamma_2_2_rectum.append(gamma_2_2_rectum)
                     self.gamma_2_2_bladder.append(gamma_2_2_bladder)
 
-                    self.gamma_1_1.append(gamma_1_1)
-                    self.gamma_1_1_gtv.append(gamma_1_1_gtv)
-                    self.gamma_1_1_sv.append(gamma_1_1_sv)
-                    self.gamma_1_1_rectum.append(gamma_1_1_rectum)
-                    self.gamma_1_1_bladder.append(gamma_1_1_bladder)
+                    self.gamma_3_3.append(gamma_3_3)
+                    self.gamma_3_3_gtv.append(gamma_3_3_gtv)
+                    self.gamma_3_3_sv.append(gamma_3_3_sv)
+                    self.gamma_3_3_rectum.append(gamma_3_3_rectum)
+                    self.gamma_3_3_bladder.append(gamma_3_3_bladder)
 
                     self.V95_gtv.append(V95_gtv)
                     self.V110_gtv.append(V110_gtv)
+                    self.Dmean_gtv.append(Dmean_gtv)
+                    self.D95_gtv.append(D95_gtv)
                     self.V95_sv.append(V95_sv)
                     self.V110_sv.append(V110_sv)
+                    self.Dmean_sv.append(Dmean_sv)
+                    self.D95_sv.append(D95_sv)
 
                     self.Dmean_rectum.append(Dmean_rectum)
                     self.D2_rectum.append(D2_rectum)
+                    self.V45_rectum.append(V45_rectum)
                     self.Dmean_bladder.append(Dmean_bladder)
                     self.D2_bladder.append(D2_bladder)
+                    self.V45_bladder.append(V45_bladder)
 
                     print(dataset, patient_name, visit_name)
 
 
-                data = {'Patient': self.patient_arr, 'Scan': self.scan_arr, 'gamma_2_2': self.gamma_2_2, 'gamma_2_2_gtv': self.gamma_2_2_gtv,
-                        'gamma_2_2_sv': self.gamma_2_2_sv, 'gamma_2_2_rectum': self.gamma_2_2_rectum, 'gamma_2_2_bladder': self.gamma_2_2_bladder,
-                        'gamma_1_1': self.gamma_1_1, 'gamma_1_1_gtv': self.gamma_1_1_gtv, 'gamma_1_1_sv': self.gamma_1_1_sv,
-                        'gamma_1_1_rectum': self.gamma_1_1_rectum, 'gamma_1_1_bladder': self.gamma_1_1_bladder, 'V95_gtv': self.V95_gtv,
-                        'V110_gtv': self.V95_sv, 'V95_sv': self.V110_gtv, 'V110_sv': self.V110_sv, 'Dmean_rectum': self.Dmean_rectum,
-                        'D2_rectum':self.D2_rectum, 'Dmean_bladder':self.Dmean_bladder, 'D2_bladder':self.D2_bladder}
+                data = {'Patient': self.patient_arr, 'Scan': self.scan_arr,
+                        'gamma_2_2': self.gamma_2_2, 'gamma_2_2_gtv': self.gamma_2_2_gtv,'gamma_2_2_sv': self.gamma_2_2_sv,
+                        'gamma_2_2_rectum': self.gamma_2_2_rectum, 'gamma_2_2_bladder': self.gamma_2_2_bladder,
+                        'gamma_3_3': self.gamma_3_3, 'gamma_3_3_gtv': self.gamma_3_3_gtv, 'gamma_3_3_sv': self.gamma_3_3_sv,
+                        'gamma_3_3_rectum': self.gamma_3_3_rectum, 'gamma_3_3_bladder': self.gamma_3_3_bladder,
+                        'V95_gtv': self.V95_gtv, 'V110_gtv': self.V110_gtv, 'Dmean_gtv': self.Dmean_gtv, 'D95_gtv': self.D95_gtv,
+                        'V95_sv': self.V95_sv, 'V110_sv': self.V110_sv, 'Dmean_sv': self.Dmean_sv, 'D95_sv': self.D95_sv,
+                        'Dmean_rectum': self.Dmean_rectum, 'D2_rectum':self.D2_rectum, 'V45_rectum': self.V45_rectum,
+                        'Dmean_bladder':self.Dmean_bladder, 'D2_bladder':self.D2_bladder, 'V45_bladder': self.V45_bladder}
 
                 df = pd.DataFrame(data, dtype=float)
 
-                df = df.reindex(['Patient', 'Scan', 'gamma_2_2', 'gamma_2_2_gtv', 'gamma_2_2_sv', 'gamma_2_2_rectum',
-                                 'gamma_2_2_bladder', 'gamma_1_1', 'gamma_1_1_gtv', 'gamma_1_1_sv', 'gamma_1_1_rectum',
-                                 'gamma_1_1_bladder', 'V95_gtv', 'V110_gtv', 'V95_sv', 'V110_sv', 'Dmean_rectum',
-                                 'D2_rectum', 'Dmean_bladder', 'D2_bladder'], axis=1)
+                df = df.reindex(['Patient', 'Scan', 'gamma_2_2', 'gamma_2_2_gtv', 'gamma_2_2_sv', 'gamma_2_2_rectum', 'gamma_2_2_bladder',
+                                 'gamma_3_3', 'gamma_3_3_gtv', 'gamma_3_3_sv', 'gamma_3_3_rectum', 'gamma_3_3_bladder',
+                                 'V95_gtv', 'V110_gtv', 'Dmean_gtv', 'D95_gtv', 'V95_sv', 'V110_sv', 'Dmean_sv', 'D95_sv',
+                                 'Dmean_rectum', 'D2_rectum', 'V45_rectum', 'Dmean_bladder', 'D2_bladder', 'V45_bladder'], axis=1)
 
                 df.loc['Median'] = df.median()
                 df.loc['Min'] = df.min()

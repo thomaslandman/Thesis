@@ -68,13 +68,8 @@ def balanced_spatial_coordinates(n_samples, img_spatial_size, win_spatial_size, 
     # print(n_samples)
     # cropped_map = sampler_map
     flatten_map = cropped_map.flatten()
-    unique_labels = [1] #np.unique(flatten_map)[1:2]
-    # print(unique_labels)
-    # print(np.shape(sampler_map))
-    # print(np.max(sampler_map))
-    # plt.imshow(sampler_map[100,:,:,0,0])
-    # plt.show()
-    # print(n_samples)
+    # unique_labels = [1] # use if only dose
+    unique_labels = np.unique(flatten_map)[1:]
 
     # system parameter?
     class_probs = [1.0 / len(unique_labels)] * len(unique_labels)

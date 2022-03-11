@@ -45,15 +45,15 @@ def Vx_target(groundtruth_dose, predicted_dose, groundtruth_contours):
     dose_pred = sitk.GetArrayFromImage(predicted_dose)
     contours = sitk.GetArrayFromImage(groundtruth_contours)
 
-    gtv_dose = dose[np.where(contours == 4, True, False)]
-    sv_dose = dose[np.where(contours == 3, True, False)]
+    gtv_dose_ref = dose[np.where(contours == 4, True, False)]
+    sv_dose_ref = dose[np.where(contours == 3, True, False)]
     gtv_dose_pred = dose_pred[np.where(contours == 4, True, False)]
     sv_dose_pred = dose_pred[np.where(contours == 3, True, False)]
 
-    V95_gtv_ref = np.sum(gtv_dose >= 74 * 0.95) / np.size(gtv_dose)
-    V110_gtv_ref = np.sum(gtv_dose <= 74 * 1.10) / np.size(gtv_dose)
-    V95_sv_ref = np.sum(sv_dose >= 55 * 0.95) / np.size(sv_dose)
-    V110_sv_ref = np.sum(sv_dose <= 55 * 1.10) / np.size(sv_dose)
+    V95_gtv_ref = np.sum(gtv_dose_ref >= 74 * 0.95) / np.size(gtv_dose_ref)
+    V110_gtv_ref = np.sum(gtv_dose_ref <= 74 * 1.10) / np.size(gtv_dose_ref)
+    V95_sv_ref = np.sum(sv_dose_ref >= 55 * 0.95) / np.size(sv_dose_ref)
+    V110_sv_ref = np.sum(sv_dose_ref <= 55 * 1.10) / np.size(sv_dose_ref)
 
     V95_gtv_pred = np.sum(gtv_dose_pred >= 74 * 0.95) / np.size(gtv_dose_pred)
     V110_gtv_pred = np.sum(gtv_dose_pred <= 74 * 1.10) / np.size(gtv_dose_pred)
@@ -65,7 +65,22 @@ def Vx_target(groundtruth_dose, predicted_dose, groundtruth_contours):
     V95_sv = (V95_sv_ref - V95_sv_pred) / V95_sv_ref
     V110_sv = (V110_sv_ref - V110_sv_pred) / V110_sv_ref
 
-    return V95_gtv, V110_gtv, V95_sv, V110_sv
+    Dmean_gtv_ref = np.mean(gtv_dose_ref)
+    D95_gtv_ref = np.sort(gtv_dose_ref.flatten())[int(-np.size(gtv_dose_ref) * 0.95)]
+    Dmean_sv_ref = np.mean(sv_dose_ref)
+    D95_sv_ref = np.sort(sv_dose_ref.flatten())[int(-np.size(sv_dose_ref) * 0.95)]
+
+    Dmean_gtv_pred = np.mean(gtv_dose_pred)
+    D95_gtv_pred = np.sort(gtv_dose_pred.flatten())[int(-np.size(gtv_dose_pred) * 0.95)]
+    Dmean_sv_pred = np.mean(sv_dose_pred)
+    D95_sv_pred = np.sort(sv_dose_pred.flatten())[int(-np.size(sv_dose_pred) * 0.95)]
+
+    Dmean_gtv = (Dmean_gtv_ref - Dmean_gtv_pred) / Dmean_gtv_ref
+    D95_gtv = (D95_gtv_ref - D95_gtv_pred) / D95_gtv_ref
+    Dmean_sv = (Dmean_sv_ref - Dmean_sv_pred) / Dmean_sv_ref
+    D95_sv = (D95_sv_ref - D95_sv_pred) / D95_sv_ref
+
+    return V95_gtv, V110_gtv, Dmean_gtv, D95_gtv, V95_sv, V110_sv, Dmean_sv, D95_sv
 
 def Dx_oar(groundtruth_dose, predicted_dose, groundtruth_contours):
     dose = sitk.GetArrayFromImage(groundtruth_dose)
@@ -92,7 +107,10 @@ def Dx_oar(groundtruth_dose, predicted_dose, groundtruth_contours):
     Dmean_bladder = (Dmean_bladder_ref - Dmean_bladder_pred) / Dmean_bladder_ref
     D2_bladder = (D2_bladder_ref - D2_bladder_pred) / D2_bladder_ref
 
-    return Dmean_rectum, D2_rectum, Dmean_bladder, D2_bladder
+    V45_rectum = 77
+    V45_bladder = 77
+
+    return Dmean_rectum, D2_rectum, V45_rectum, Dmean_bladder, D2_bladder, V45_bladder
 
 
 

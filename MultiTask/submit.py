@@ -7,7 +7,7 @@ setting = dict()
 setting['cluster_manager'] = 'Slurm'
 setting['NumberOfGPU'] = 1
 setting['cluster_MemPerCPU'] = 7500
-setting['cluster_NumberOfCPU'] = 6              # Number of CPU per job
+setting['cluster_NumberOfCPU'] = 6             # Number of CPU per job
 setting['cluster_NodeList'] = 'res-hpc-lkeb03'  # ['res-hpc-gpu01','res-hpc-gpu02','res-hpc-lkeb03',---,'res-hpc-lkeb07']
 
 
@@ -57,8 +57,20 @@ experiments_dict['doseprediction_f'] ={'model_name':'Dose', 'task':'Single-Task'
 experiments_dict['doseprediction_g'] ={'model_name':'Dose_Deep', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
                                      'input':'Sf_If_Dm', 'task_ids': ['dose'], 'num_featurmaps': [16, 32, 64, 128], 'num_classes':4}
 
+experiments_dict['doseprediction_h'] ={'model_name':'Dose_Masks', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
+                                     'input':'Sf_If_Dm', 'task_ids': ['dose'], 'num_featurmaps': [23, 45, 91], 'num_classes':4}
 
-exp = experiments_dict['doseprediction_c']
+experiments_dict['doseprediction_i'] ={'model_name':'Dose_Masks', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
+                                     'input':'Sf_If_Dm_Ma', 'task_ids': ['dose'], 'num_featurmaps': [23, 45, 91], 'num_classes':4}
+
+experiments_dict['doseprediction_j'] ={'model_name':'Dose_Masks', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
+                                     'input':'Sf_If_Dm', 'task_ids': ['dose'], 'num_featurmaps': [23, 45, 91], 'num_classes':4}
+
+experiments_dict['doseprediction_k'] ={'model_name':'Dose_Masks2', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
+                                     'input':'Sf_If_Dm_Ma', 'task_ids': ['dose'], 'num_featurmaps': [23, 45, 91], 'num_classes':4}
+
+
+exp = experiments_dict['doseprediction_i']
 exp['is_debug'] = True
 is_local = True
 exp['mode'] = 'train'       #['train', 'inference', 'eval']
