@@ -23,8 +23,11 @@ class CSNet(nn.Module):
         super().__init__()
         assert dim in (2, 3)
         self.dim = dim
+        print(dim)
         self.num_Classes = classes
-
+        print(depth)
+        print(classes)
+        print(channels_list)
         self.unet = cs_unet.UNet(in_channels=in_channels, out_channels_seg= classes, dim=dim,
                                  depth=depth, initial_channels=initial_channels, channels_list=channels_list)
         self.spatial_transform = SpatialTransformer(self.dim)

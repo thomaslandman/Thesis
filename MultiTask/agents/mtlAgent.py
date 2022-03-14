@@ -12,12 +12,12 @@ from graphs.losses.loss import *
 from graphs.models.csnet import CSNet
 from graphs.models.densenet import DenseNet
 from graphs.models.seddnet import SEDDNet
-from utils import dataset_niftynet as dset_utils
+from utils_MT import dataset_niftynet_MT as dset_utils
 from utils.SpatialTransformer import SpatialTransformer
 from utils.model_util import count_parameters
 from utils.segmentation_eval import evaluation_seg
 from utils.segmentation_eval import evaluation_seg
-from utils.util import clean_data
+from utils_MT.util import clean_data
 
 
 class mtlAgent(BaseAgent):
@@ -68,7 +68,7 @@ class mtlAgent(BaseAgent):
 
             # Create instance from the loss
             self.dsc_loss = Multi_DSC_Loss().to(self.args.device)
-            self.ncc_loss = NCC(self.args.dim, self.args.ncc_window_size).to(self.args.device)
+            self.ncc_loss = NCC(3, self.args.ncc_window_size).to(self.args.device)
             self.smooth_loss = GradientSmoothing(energy_type='bending')
             self.spatial_transform = SpatialTransformer(dim=3)
             self.homoscedastic = Homoscedastic(len(self.args.task_ids))

@@ -21,7 +21,7 @@
   "ncc_window_size":9,
 
   "batch_size": 1,
-  "lr": 0.001,
+  "lr": 0.002,
   "lr_gamma":1.0,
   "lr_update_rate":500,
   "beta1": 0.5,

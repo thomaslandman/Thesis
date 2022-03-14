@@ -25,6 +25,7 @@ class evaluation_dose(object):
             elif partition == 'inference':
                 dataset = 'EMC'
 
+
             files_list = self.partitioner.get_file_list(partition, 'fixed_dose')['fixed_dose'].values.tolist()
 
             writer = pd.ExcelWriter(os.path.join(self.args.output_dir, dataset, "Evaluation-Dose.xlsx"),

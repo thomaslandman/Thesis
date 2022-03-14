@@ -36,8 +36,8 @@ def loss_plot():
 
 
 def DVH_plot():
-    scan = 'Patient_23/visit_20071105'
-    exp_name = 'Dose_Masks_input_Sf_If_Dm'
+    scan = 'Patient_24/visit_20071102'
+    exp_name = 'Dose_Masks_input_Sf_If_Dm_Ma'
 
     cont = read_mha(os.path.join('/exports/lkeb-hpc/tlandman/Data/Patient_MHA', scan, 'Segmentation.mha'))
     dose = read_mha(os.path.join('/exports/lkeb-hpc/tlandman/Data/Patient_MHA', scan, 'Dose.mha'))
@@ -53,34 +53,39 @@ def DVH_plot():
     rectum_dose_pred = np.sort(dose_pred[np.where(cont == 2, True, False)])
     bladder_dose_pred = np.sort(dose_pred[np.where(cont == 1, True, False)])
 
-    plt.plot(gtv_dose, 1 - np.arange(gtv_dose.size) / gtv_dose.size, 'b-')
-    plt.plot(gtv_dose_pred, 1 - np.arange(gtv_dose_pred.size) / gtv_dose_pred.size, 'b--')
-    plt.plot(sv_dose, 1 - np.arange(sv_dose.size) / sv_dose.size, 'g-')
-    plt.plot(sv_dose_pred, 1 - np.arange(sv_dose_pred.size) / sv_dose_pred.size, 'g--')
-    plt.plot(rectum_dose, 1 - np.arange(rectum_dose.size) / rectum_dose.size, 'r-')
-    plt.plot(rectum_dose_pred, 1 - np.arange(rectum_dose_pred.size) / rectum_dose_pred.size, 'r--')
-    plt.plot(bladder_dose, 1 - np.arange(bladder_dose.size)/bladder_dose.size, 'y-')
-    plt.plot(bladder_dose_pred, 1 - np.arange(bladder_dose_pred.size) / bladder_dose_pred.size, 'y--')
-
+    plt.plot(gtv_dose, 1 - np.arange(gtv_dose.size) / gtv_dose.size, 'b-', label='GTV')
+    plt.plot(gtv_dose_pred, 1 - np.arange(gtv_dose_pred.size) / gtv_dose_pred.size, 'b--', label='GTV predicted')
+    plt.plot(sv_dose, 1 - np.arange(sv_dose.size) / sv_dose.size, 'g-',  label='SV')
+    plt.plot(sv_dose_pred, 1 - np.arange(sv_dose_pred.size) / sv_dose_pred.size, 'g--',  label='SV predicted')
+    plt.plot(rectum_dose, 1 - np.arange(rectum_dose.size) / rectum_dose.size, 'r-',  label='Rectum')
+    plt.plot(rectum_dose_pred, 1 - np.arange(rectum_dose_pred.size) / rectum_dose_pred.size, 'r--',  label='Rectum predicted')
+    plt.plot(bladder_dose, 1 - np.arange(bladder_dose.size)/bladder_dose.size, 'y-',  label='Bladder')
+    plt.plot(bladder_dose_pred, 1 - np.arange(bladder_dose_pred.size) / bladder_dose_pred.size, 'y--',  label='Baldder predicted')
+    plt.xlabel('Dose [Gy]')
+    plt.ylabel('Volume [-]')
+    plt.legend()
     plt.show()
 
-def show_CT(fig, ax, CT=None, dose=None, cont=None, slice=50, title=None, max_dose=None):
+def show_CT(fig, ax, CT=None, dose=None, cont=None, slice=50, title=None, max_dose=None, overlay=True):
     ax.imshow(CT[slice, :, :], cmap='binary_r')
 
     if type(dose) != None:
-        m = cm.ScalarMappable(cmap='jet')
-        m.set_array([])
-        m.set_clim(vmin=0, vmax=np.max(max_dose))
-        dose_overlay = np.where(dose > 1, 0.2, 0)
-        dose_overlay = np.where(dose > 3, 0.3, dose_overlay)
-        dose_overlay = np.where(dose > 5, 0.4, dose_overlay)
-        dose_overlay = np.where(dose > 7, 0.6, dose_overlay)
-        dose_overlay = np.where(dose > 10, 0.8, dose_overlay)
+        if overlay:
+            m = cm.ScalarMappable(cmap='jet')
+            m.set_array([])
+            m.set_clim(vmin=0, vmax=np.max(max_dose))
+            dose_overlay = np.where(dose > 1, 0.2, 0)
+            dose_overlay = np.where(dose > 3, 0.3, dose_overlay)
+            dose_overlay = np.where(dose > 5, 0.4, dose_overlay)
+            dose_overlay = np.where(dose > 7, 0.6, dose_overlay)
+            dose_overlay = np.where(dose > 10, 0.8, dose_overlay)
 
-        dose = cm.jet((dose - np.min(dose)) / (np.max(dose) - np.min(dose)))
-        dose[:, :, :, 3] = dose_overlay
-        ax.imshow(dose[slice, :, :, :])
-        fig.colorbar(m, ax=ax)
+            dose = cm.jet((dose - np.min(dose)) / (np.max(dose) - np.min(dose)))
+            dose[:, :, :, 3] = dose_overlay
+            ax.imshow(dose[slice, :, :, :])
+            fig.colorbar(m, ax=ax)
+        else:
+            ax.imshow(dose[slice,:,:], cmap='jet')
 
     if type(cont) != None:
         ax.contour(cont[slice, :, :], levels=[0, 1, 2, 3], colors=['white', 'white', 'white', 'white'], linewidths=0.8) # 'violet', 'lime', 'cyan', 'mediumblue'],
@@ -91,24 +96,27 @@ def show_CT(fig, ax, CT=None, dose=None, cont=None, slice=50, title=None, max_do
 
     return ax
 
-def show_diff(fig, ax, CT, diff, cont=None, slice=50, lim=10, title=None):
+def show_diff(fig, ax, CT, diff, cont=None, slice=50, lim=10, title=None, overlay=True):
     ax.imshow(CT[slice, :, :], cmap='binary_r')
 
-    m = cm.ScalarMappable(cmap='bwr')
-    m.set_array([])
-    m.set_clim(vmin=-lim, vmax=lim)
-    dose_overlay = np.where(abs(diff) > 0.001, 0.1, 0)
-    dose_overlay = np.where(abs(diff) > 0.5, 0.2, dose_overlay)
-    dose_overlay = np.where(abs(diff) > 1, 0.4, dose_overlay)
-    dose_overlay = np.where(abs(diff) > 1.5, 0.6, dose_overlay)
-    dose_overlay = np.where(abs(diff) > 2, 0.8, dose_overlay)
-    diff = np.where(diff > lim, lim, diff)
-    diff = np.where(diff < -lim, -lim, diff)
-    diff = cm.bwr((diff - np.min(diff)) / (np.max(diff) - np.min(diff)))
-    diff[:, :, :, 3] = dose_overlay
+    if overlay:
+        m = cm.ScalarMappable(cmap='bwr')
+        m.set_array([])
+        m.set_clim(vmin=-lim, vmax=lim)
+        dose_overlay = np.where(abs(diff) > 0.001, 0.1, 0)
+        dose_overlay = np.where(abs(diff) > 0.5, 0.2, dose_overlay)
+        dose_overlay = np.where(abs(diff) > 1, 0.4, dose_overlay)
+        dose_overlay = np.where(abs(diff) > 1.5, 0.6, dose_overlay)
+        dose_overlay = np.where(abs(diff) > 2, 0.8, dose_overlay)
+        diff = np.where(diff > lim, lim, diff)
+        diff = np.where(diff < -lim, -lim, diff)
+        diff = cm.bwr((diff - np.min(diff)) / (np.max(diff) - np.min(diff)))
+        diff[:, :, :, 3] = dose_overlay
 
-    ax.imshow(diff[slice, :, :, :])
-    fig.colorbar(m, ax=ax)
+        ax.imshow(diff[slice, :, :, :])
+        fig.colorbar(m, ax=ax)
+    else:
+        ax.imshow(diff[slice], cmap='bwr')
 
     if type(cont) != None:
         ax.contour(cont[slice, :, :], levels=[0, 1, 2, 3], colors=['white', 'white', 'white', 'white'], linewidths=0.8) #'cyan', 'mediumblue', 'violet', 'lime'],
@@ -176,9 +184,11 @@ def show_gamma(fig, ax, CT, gamma, cont=None, slice=50, title=None):
 
 
 def planning_daily_dose():
-    scan = 'Patient_24/visit_20071207'
+    scan = 'Patient_24/visit_20071102'
     exp_name = 'Dose_Masks_input_Sf_If_Dm_Ma'
-    slice = 75
+    slice = 69
+    overlay = True
+    plot_gamma = True
     daily_CT = read_mha(os.path.join('/exports/lkeb-hpc/tlandman/Data/Patient_MHA', scan, 'CTImage.mha'))
     daily_cont = read_mha(os.path.join('/exports/lkeb-hpc/tlandman/Data/Patient_MHA', scan, 'Segmentation.mha'))
     daily_dose = read_mha(os.path.join('/exports/lkeb-hpc/tlandman/Data/Patient_MHA', scan, 'Dose.mha'))
@@ -188,17 +198,19 @@ def planning_daily_dose():
     # fig.suptitle('Comparing the daily scan with the registered planning scan')
     max_dose = np.max(np.append(daily_dose, predicted_dose))
     axs[0, 0] = show_CT(fig, axs[0, 0], daily_CT, dose=daily_dose, cont=daily_cont, slice=slice,
-                        title='Ground Truth Dose [Gy]', max_dose=max_dose)
+                        title='Ground Truth Dose [Gy]', max_dose=max_dose, overlay=overlay)
     axs[0, 1] = show_CT(fig, axs[0, 1], daily_CT, dose=predicted_dose, cont=daily_cont, slice=slice,
-                        title='Predicted Dose [Gy]', max_dose=max_dose)
+                        title='Predicted Dose [Gy]', max_dose=max_dose, overlay=overlay)
 
     diff_dose = daily_dose - predicted_dose
     axs[1, 0] = show_diff(fig, axs[1, 0], daily_CT, diff=diff_dose, cont=daily_cont, lim=10, slice=slice,
-                        title='Difference [Gy]')
+                        title='Difference [Gy]', overlay=overlay)
 
-    gamma_map = get_gamma_map(scan, dose=daily_dose, dose_pred=predicted_dose, cont=daily_cont, print_values=True)
-    axs[1, 1] = show_gamma(fig, axs[1,1], daily_CT, gamma_map, cont=daily_cont, slice=slice, title='Gamma Map')
+    if plot_gamma:
+        gamma_map = get_gamma_map(scan, dose=daily_dose, dose_pred=predicted_dose, cont=daily_cont, print_values=True)
+        axs[1, 1] = show_gamma(fig, axs[1,1], daily_CT, gamma_map, cont=daily_cont, slice=slice, title='Gamma Map')
+
     plt.show()
 
-planning_daily_dose()
-# DVH_plot()
+# planning_daily_dose()
+DVH_plot()
