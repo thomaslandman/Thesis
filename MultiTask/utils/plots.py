@@ -184,9 +184,9 @@ def show_gamma(fig, ax, CT, gamma, cont=None, slice=50, title=None):
 
 
 def planning_daily_dose():
-    scan = 'Patient_24/visit_20071102'
-    exp_name = 'Dose_Masks_input_Sf_If_Dm_Ma'
-    slice = 69
+    scan = 'Patient_21/visit_20071116'
+    exp_name = 'Dose_Deep_good_input_Sf_If_Dm_Ma'
+    slice = 60
     overlay = True
     plot_gamma = True
     daily_CT = read_mha(os.path.join('/exports/lkeb-hpc/tlandman/Data/Patient_MHA', scan, 'CTImage.mha'))
@@ -212,5 +212,9 @@ def planning_daily_dose():
 
     plt.show()
 
-# planning_daily_dose()
-DVH_plot()
+planning_daily_dose()
+# DVH_plot()
+# scan = 'Patient_04/visit_20070622'
+# daily_cont = read_mha(os.path.join('/exports/lkeb-hpc/tlandman/Data/Patient_MHA', scan, 'Segmentation.mha'))
+# plt.imshow(daily_cont[60,:,:])
+# plt.show()

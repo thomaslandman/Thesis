@@ -7,7 +7,7 @@ setting = dict()
 setting['cluster_manager'] = 'Slurm'
 setting['NumberOfGPU'] = 1
 setting['cluster_MemPerCPU'] = 7500
-setting['cluster_NumberOfCPU'] = 2              # Number of CPU per job
+setting['cluster_NumberOfCPU'] = 4             # Number of CPU per job
 setting['cluster_NodeList'] = 'res-hpc-lkeb03'  # ['res-hpc-gpu01','res-hpc-gpu02','res-hpc-lkeb03',---,'res-hpc-lkeb07']
 
 
@@ -72,17 +72,29 @@ experiments_dict['doseprediction_k'] ={'model_name':'Dose_Masks2', 'task':'Singl
 experiments_dict['doseprediction_l'] ={'model_name':'Dose_Deep', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
                                      'input':'Sf_If_Dm_Ma', 'task_ids': ['dose'], 'num_featurmaps': [16, 32, 64, 128], 'num_classes':4}
 
-experiments_dict['cross-stitch_a'] ={'model_name':'CS', 'task':'Multi-Task', 'agent':'mtlAgent', 'network':'CS',
-                                     'weight':'equal', 'input_seg':'If_Sm', 'input_reg':'If_Im_Sm', 'loss_seg':'DSC', 'loss_reg':'NCC_DSCWarp',
-                                     'input':'If_Im_Sm', "task_ids": ["seg", "reg", "seg_reg"], 'num_featurmaps': [16, 32, 64], 'num_classes':3}
+experiments_dict['doseprediction_m'] ={'model_name':'Dose_Deep_good', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
+                                     'input':'Sf_If_Dm_Ma', 'task_ids': ['dose'], 'num_featurmaps': [16, 32, 64, 128], 'num_classes':4}
+
+experiments_dict['doseprediction_n'] ={'model_name':'Dose_Deep_weights', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
+                                     'input':'Sf_If_Dm_Ma', 'task_ids': ['dose'], 'num_featurmaps': [32, 64, 128, 256], 'num_classes':4}
+
+experiments_dict['doseprediction_p'] ={'model_name':'Dose_Deep_no_weights', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
+                                     'input':'Sf_If_Dm_Ma', 'task_ids': ['dose'], 'num_featurmaps': [32, 64, 128, 256], 'num_classes':4}
+
+experiments_dict['cross-stitch_a']  ={'model_name':'CS', 'task':'Multi-Task', 'agent':'mtlAgent', 'network':'CS',
+                                    'weight':'equal', 'input_seg':'If_Sm', 'input_reg':'If_Im_Sm', 'loss_seg':'DSC', 'loss_reg':'NCC_DSCWarp',
+                                    'input':'If_Im_Sm', "task_ids": ["seg", "reg", "seg_reg"], 'num_featurmaps': [16, 32, 64], 'num_classes':5}
+
+experiments_dict['w-net_a']         ={'model_name':'w-net', 'task':'Single-Task', 'agent':'stlAgent_2', 'network':'w-net',
+                                    'input':'Sm_If_Dm', 'task_ids': ['w-net'], 'num_featurmaps': None}
 
 
 
 
-exp = experiments_dict['cross-stitch_a']
-exp['is_debug'] = True
-is_local = True
-exp['mode'] = 'train'       #['train', 'inference', 'eval']
+exp = experiments_dict['w-net_a']
+exp['is_debug'] = False
+is_local = False
+exp['mode'] = 'train'            #['train', 'inference', 'eval']
 
 base_json_script = '/exports/lkeb-hpc/tlandman/Thesis/MultiTask/configs/base_args.json'
 script_address = '/exports/lkeb-hpc/tlandman/Thesis/MultiTask/main.py'

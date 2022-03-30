@@ -132,7 +132,9 @@ def make_one_hot(labels, num_classes):
     target : torch.autograd.Variable of torch.cuda.FloatTensor
         N x C x H x W, where C is class number. One-hot encoded.
     '''
-    one_hot = torch.cuda.FloatTensor(labels.size(0), num_classes, labels.size(2), labels.size(3)).zero_()
+    one_hot = torch.cuda.FloatTensor(labels.size(0), num_classes, labels.size(2), labels.size(3), labels.size(4)).zero_()
+    print(one_hot.size())
+    print(labels.size())
     target = one_hot.scatter_(1, labels.data, 1)
     return target
 
@@ -146,7 +148,7 @@ class Multi_DSC_Loss(nn.Module):
         num_classes : int
             Number of classes
     '''
-    def __init__(self, num_classes=6):
+    def __init__(self, num_classes=5, task='seg'):
         super().__init__()
         self.num_classes = num_classes
 
@@ -167,15 +169,57 @@ class Multi_DSC_Loss(nn.Module):
         target_one_hot = make_one_hot(target.to(torch.int64), self.num_classes)
         if task == 'reg':
             prediction_one_hot = make_one_hot(prediction.to(torch.int64), self.num_classes)
+            print('reg')
         elif task == 'seg':
+            print('seg')
             prediction_one_hot = prediction
 
-        inter = (target_one_hot * prediction_one_hot).sum(axis=[-1, -2])
-        union = (target_one_hot + prediction_one_hot).sum(axis=[-1, -2])
+        inter = (target_one_hot * prediction_one_hot).sum(axis=[-1, -2, -3])
+        union = (target_one_hot + prediction_one_hot).sum(axis=[-1, -2, -3])
+        print(inter.size())
         dsc_list_per_image = (2. * inter / (union + 1e-3))[:, 1:]
+        print(dsc_list_per_image.size())
         dsc_mean = 1 - (dsc_list_per_image.mean(axis=0))
-        return  dsc_mean
+        print(dsc_mean.size())
+        return dsc_mean
 
+class Multi_DSC_Loss_2(nn.Module):
+    def __init__(self):
+        super(Multi_DSC_Loss_2, self).__init__()
+        pass
+
+    def forward(self, true, logits, use_activation=True, num_classes=5):
+
+        dice_loss, dice_list = self.dice_loss(true, logits, num_classes, use_activation)
+
+        return dice_loss, dice_list
+
+    def dice_loss(self, true, logits, num_classes, use_activation, eps=1e-7):
+        """Computes the SørensenDice loss.
+        Note that PyTorch optimizers minimize a loss. In this
+        case, we would like to maximize the dice loss so we
+        return the negated dice loss.
+        Args:
+            true: a tensor of shape [B, 1, H, W, D].
+            logits: a tensor of shape [B, C, H, W, D]. Corresponds to
+                the raw output or logits of the model.
+            eps: added to the denominator for numerical stability.
+        Returns:
+            dice_loss: the SørensenDice loss.
+        """
+        true_1_hot = torch.eye(num_classes)[true.squeeze(1).long()]
+        true_1_hot = true_1_hot.permute(0, 4, 1, 2, 3).float().to(true.device)
+        if use_activation:
+            probas = F.softmax(logits, dim=1)
+        else:
+            probas = logits
+        true_1_hot = true_1_hot.type(logits.type())
+        dims = (0,) + tuple(range(2, true.ndimension()))
+        intersection = torch.sum(probas * true_1_hot, dims)
+        cardinality = torch.sum(probas + true_1_hot, dims)
+        dice_list = (2. * intersection / (cardinality + eps))
+        dice_loss = dice_list[1:].mean()
+        return (1 - dice_loss), dice_list[1:]
 
 class Dice(nn.Module):
     def __init__(self):
@@ -298,4 +342,18 @@ def grad_norm(self, lossList):
 
     return total_weighted_loss
 
+class Weighted_MSELoss(nn.Module):
 
+    def __init__(self):
+        super().__init__()
+
+
+    def forward(self, target, prediction, segmentation):
+
+        weights = torch.where(segmentation == 4, 25 + torch.sign(target - prediction).float() * 15, torch.ones_like(segmentation))
+        weights = torch.where(segmentation == 3, 25 + torch.sign(target - prediction) * 15, weights)
+        # print(target.size())
+        Weighted_MSELoss = torch.mean(weights * (target-prediction) ** 2)
+        # print(Weighted_MSELoss.size())
+
+        return Weighted_MSELoss

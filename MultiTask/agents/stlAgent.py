@@ -69,11 +69,12 @@ class stlAgent(BaseAgent):
                     self.model = DoseNet_2(in_channels=len(self.args.input)+2, classes=1,
                                      depth=self.args.depth, initial_channels=self.args.initial_channels,
                                      channels_list=self.args.num_featurmaps).to(self.args.device)
+                    self.mse_loss = Weighted_MSELoss().to(self.args.device)
                 else:
-                    self.model = DoseNet(in_channels=len(self.args.input) + 1, classes=1,
+                    self.model = DoseNet(in_channels=len(self.args.input), classes=1,
                                      depth=self.args.depth, initial_channels=self.args.initial_channels,
                                      channels_list=self.args.num_featurmaps).to(self.args.device)
-                self.mse_loss = nn.MSELoss().to(self.args.device)
+                    self.mse_loss = nn.MSELoss().to(self.args.device)
 
 
             else:
@@ -249,9 +250,12 @@ class stlAgent(BaseAgent):
                 loss = ncc_loss + self.args.w_bending_energy * smooth_loss
 
             elif self.args.network == 'Dose':
-                mse_loss_high = self.mse_loss(data_dict['fdose_high'], res['logits_high'])
-                mse_loss_mid  = self.mse_loss(data_dict['fdose_mid'] , res['logits_mid'])
-                mse_loss_low  = self.mse_loss(data_dict['fdose_low'] , res['logits_low'])
+                mse_loss_high = self.mse_loss(data_dict['fdose_high'], res['logits_high'], data_dict['flabel_high'])
+                mse_loss_mid = self.mse_loss(data_dict['fdose_mid'], res['logits_mid'], data_dict['flabel_mid'])
+                mse_loss_low = self.mse_loss(data_dict['fdose_low'], res['logits_low'], data_dict['flabel_low'])
+                # mse_loss_high = self.mse_loss(data_dict['fdose_high'], res['logits_high'])
+                # mse_loss_mid  = self.mse_loss(data_dict['fdose_mid'] , res['logits_mid'])
+                # mse_loss_low  = self.mse_loss(data_dict['fdose_low'] , res['logits_low'])
 
                 mse_loss = self.args.level_weights[0] * mse_loss_high + \
                            self.args.level_weights[1] * mse_loss_mid + \
@@ -400,9 +404,9 @@ class stlAgent(BaseAgent):
                     loss = ncc_loss + self.args.w_bending_energy * smooth_loss
 
                 elif self.args.network == 'Dose':
-                    mse_loss_high = self.mse_loss(data_dict['fdose_high'], res['logits_high'])
-                    mse_loss_mid  = self.mse_loss(data_dict['fdose_mid'] , res['logits_mid'])
-                    mse_loss_low  = self.mse_loss(data_dict['fdose_low'] , res['logits_low'])
+                    mse_loss_high = self.mse_loss(data_dict['fdose_high'], res['logits_high'], data_dict['flabel_high'])
+                    mse_loss_mid  = self.mse_loss(data_dict['fdose_mid'] , res['logits_mid'], data_dict['flabel_mid'])
+                    mse_loss_low  = self.mse_loss(data_dict['fdose_low'] , res['logits_low'], data_dict['flabel_low'])
 
                     mse_loss = self.args.level_weights[0] * mse_loss_high + \
                                self.args.level_weights[1] * mse_loss_mid + \
@@ -456,8 +460,11 @@ class stlAgent(BaseAgent):
         for partition in self.args.split_set:
             if partition == 'validation':
                 dataset = 'HMC'
+
             elif partition == 'inference':
                 dataset = 'EMC'
+
+
 
             reader = self.dsets[partition].sampler.reader
             inference_cases = reader._file_list['fixed_image'].values
@@ -516,6 +523,7 @@ class stlAgent(BaseAgent):
 
                 sw = SlidingWindow(f_bshape, pl_bshape, striding=striding)
                 out_sw = SlidingWindow(inp_bshape, op_shape, striding=striding)
+
                 done = False
 
                 while True:

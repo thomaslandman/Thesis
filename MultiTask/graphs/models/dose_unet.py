@@ -52,7 +52,7 @@ class DoseNet(nn.Module):
         elif moving_dose == None:
             input_image = torch.cat((fixed_segmentation, fixed_image), dim=1) # (n, 1, d, h, w)
 
-        elif True:    #change later not a good method of showing to use this one
+        elif False:    #change later not a good method of showing to use this one
             target = torch.where(fixed_segmentation == 4, 1, 0)
             target = torch.where(fixed_segmentation == 3, 2, target)
             oar = torch.where(fixed_segmentation == 2, 1, 0)
@@ -65,7 +65,10 @@ class DoseNet(nn.Module):
         logits_list = self.unet(input_image)
         # probs_list = [F.softmax(x, dim=1) for x in logits_list]
         # predicted_label_list = [torch.max(x, dim=1, keepdim=True)[1] for x in probs_list]
-
+        # print(logits_list[0].shape)
+        # print(logits_list[1].shape)
+        # print(logits_list[2].shape)
+        # print(logits_list[3].shape)
         res = {'logits_low': logits_list[0], 'logits_mid': logits_list[1], 'logits_high': logits_list[2]}
 
         return res

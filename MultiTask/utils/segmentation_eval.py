@@ -58,8 +58,10 @@ class evaluation_seg(object):
                 else:
 
                     for file in files_list:
-                        patient_name = file.split('/')[-4]
-                        visit_name = file.split('/')[-3]
+                        patient_name = file.split('/')[-3]
+                        visit_name = file.split('/')[-2]
+
+                        print(patient_name, visit_name)
 
                         groundtruth_segmentation = sitk.ReadImage(file)
                         groundtruth_bladder = sitk.BinaryThreshold(groundtruth_segmentation, lowerThreshold=1,

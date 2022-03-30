@@ -17,7 +17,8 @@ from utils.SpatialTransformer import SpatialTransformer
 from utils.model_util import count_parameters
 from utils.segmentation_eval import evaluation_seg
 from utils.segmentation_eval import evaluation_seg
-from utils_MT.util import clean_data
+from utils.sliding_window_inference import SlidingWindow
+from utils_MT.util import clean_data, resize_image_mlvl
 
 
 class mtlAgent(BaseAgent):
@@ -64,10 +65,10 @@ class mtlAgent(BaseAgent):
                                      depth=self.args.depth, initial_channels=self.args.initial_channels,
                                      channels_list=self.args.num_featurmaps).to(self.args.device)
             else:
-                print('Unknown Netowrk')
+                print('Unknown Network')
 
             # Create instance from the loss
-            self.dsc_loss = Multi_DSC_Loss().to(self.args.device)
+            self.dsc_loss = Multi_DSC_Loss_2().to(self.args.device)
             self.ncc_loss = NCC(3, self.args.ncc_window_size).to(self.args.device)
             self.smooth_loss = GradientSmoothing(energy_type='bending')
             self.spatial_transform = SpatialTransformer(dim=3)
@@ -138,7 +139,7 @@ class mtlAgent(BaseAgent):
             self.current_epoch = epoch
             self.train_one_epoch()
 
-            if (epoch) % self.args.validate_every == 0:
+            if (epoch) % self.args.validation_rate == 0:
                 self.validate()
 
             self.save_checkpoint()
@@ -184,21 +185,17 @@ class mtlAgent(BaseAgent):
             mlabel_mid_out = self.spatial_transform(data_dict['mlabel_mid_hot'], res['dvf_mid'], mode='nearest')
             mlabel_low_out = self.spatial_transform(data_dict['mlabel_low_hot'], res['dvf_low'], mode='nearest')
 
-            reg_dsc_loss_high, reg_dsc_list_high = self.dsc_loss(data_dict['flabel_high'], mlabel_high_out,
-                                                                 use_activation=False)
-            reg_dsc_loss_mid, reg_dsc_list_mid = self.dsc_loss(data_dict['flabel_mid'], mlabel_mid_out,
-                                                               use_activation=False)
-            reg_dsc_loss_low, reg_dsc_list_low = self.dsc_loss(data_dict['flabel_low'], mlabel_low_out,
-                                                               use_activation=False)
-
+            reg_dsc_loss_high, reg_dsc_list_high = self.dsc_loss(data_dict['flabel_high'], mlabel_high_out, use_activation=False)
+            reg_dsc_loss_mid, reg_dsc_list_high = self.dsc_loss(data_dict['flabel_mid'], mlabel_mid_out, use_activation=False)
+            reg_dsc_loss_low, reg_dsc_list_high = self.dsc_loss(data_dict['flabel_low'], mlabel_low_out, use_activation=False)
 
             ncc_loss_high = self.ncc_loss(data_dict['fimage_high'], mimage_high_out)
             ncc_loss_mid = self.ncc_loss(data_dict['fimage_mid'], mimage_mid_out)
             ncc_loss_low = self.ncc_loss(data_dict['fimage_low'], mimage_low_out)
 
-            dvf_loss_high = self.smooth_loss(res['high_res_dvf'])
-            dvf_loss_mid = self.smooth_loss(res['mid_res_dvf'])
-            dvf_loss_low = self.smooth_loss(res['low_res_dvf'])
+            dvf_loss_high = self.smooth_loss(res['dvf_high'])
+            dvf_loss_mid = self.smooth_loss(res['dvf_mid'])
+            dvf_loss_low = self.smooth_loss(res['dvf_low'])
 
             reg_dsc_loss = self.args.level_weights[0] * reg_dsc_loss_high + \
                            self.args.level_weights[1] * reg_dsc_loss_mid + \
@@ -277,9 +274,8 @@ class mtlAgent(BaseAgent):
                 self.summary_writer.add_scalars(f'Weights/w_{i}',{'train': self.lambda_weight[:, self.current_epoch].tolist()[i]},
                                                 self.current_epoch)
 
-        self.logger.info('{} totalLoss: {:.4f} dscLoss: {:.4f} nccLoss: {:.4f} dvfLoss: {:.4f} dsc: {:.4f} ncc: {:.4f}'.
-                         format('training', epoch_loss, epoch_seg_dsc_loss, epoch_ncc_loss, epoch_dvf_loss,
-                                epoch_seg_dsc, epoch_ncc))
+        self.logger.info('{} totalLoss: {:.4f} seg_dscLoss: {:.4f} reg_dscLoss {:.4f} nccLoss: {:.4f} dvfLoss: {:.4f}'.
+                         format('training', epoch_loss, epoch_seg_dsc_loss, epoch_reg_dsc_loss, epoch_ncc_loss, epoch_dvf_loss))
         if self.args.weight == 'gn':
             self.logger.info('GradNorm Weights: {}'.format(self.weights.tolist()))
         elif self.args.weight == 'homo':
@@ -330,18 +326,18 @@ class mtlAgent(BaseAgent):
 
                 reg_dsc_loss_high, reg_dsc_list_high = self.dsc_loss(data_dict['flabel_high'], mlabel_high_out,
                                                                      use_activation=False)
-                reg_dsc_loss_mid, reg_dsc_list_mid = self.dsc_loss(data_dict['flabel_mid'], mlabel_mid_out,
-                                                                   use_activation=False)
-                reg_dsc_loss_low, reg_dsc_list_low = self.dsc_loss(data_dict['flabel_low'], mlabel_low_out,
-                                                                   use_activation=False)
+                reg_dsc_loss_mid, reg_dsc_list_high = self.dsc_loss(data_dict['flabel_mid'], mlabel_mid_out,
+                                                                    use_activation=False)
+                reg_dsc_loss_low, reg_dsc_list_high = self.dsc_loss(data_dict['flabel_low'], mlabel_low_out,
+                                                                    use_activation=False)
 
                 ncc_loss_high = self.ncc_loss(data_dict['fimage_high'], mimage_high_out)
                 ncc_loss_mid = self.ncc_loss(data_dict['fimage_mid'], mimage_mid_out)
                 ncc_loss_low = self.ncc_loss(data_dict['fimage_low'], mimage_low_out)
 
-                dvf_loss_high = self.smooth_loss(res['high_res_dvf'])
-                dvf_loss_mid = self.smooth_loss(res['mid_res_dvf'])
-                dvf_loss_low = self.smooth_loss(res['low_res_dvf'])
+                dvf_loss_high = self.smooth_loss(res['dvf_high'])
+                dvf_loss_mid = self.smooth_loss(res['dvf_mid'])
+                dvf_loss_low = self.smooth_loss(res['dvf_low'])
 
                 reg_dsc_loss = self.args.level_weights[0] * reg_dsc_loss_high + \
                                self.args.level_weights[1] * reg_dsc_loss_mid + \
@@ -412,8 +408,10 @@ class mtlAgent(BaseAgent):
         for partition in self.args.split_set:
             if partition == 'validation':
                 dataset = 'HMC'
+                continue
             elif partition == 'inference':
                 dataset = 'EMC'
+
 
             reader = self.dsets[partition].sampler.reader
             inference_cases = reader._file_list['fixed_image'].values
@@ -427,7 +425,7 @@ class mtlAgent(BaseAgent):
 
             for i in range(len(inference_cases)):
 
-                print(inference_cases[i].split('/')[-4], inference_cases[i].split('/')[-3])
+                print(inference_cases[i].split('/')[-3], inference_cases[i].split('/')[-2])
 
                 _, data, _ = reader(idx=i, shuffle=False)
 
@@ -486,12 +484,12 @@ class mtlAgent(BaseAgent):
 
                     mimage_window_high = resize_image_mlvl(self.args, mimage_window, 0)
                     mlabel_window_high = resize_image_mlvl(self.args, mlabel_window, 0)
-                    mimage_high_out = self.st(mimage_window_high, res['dvf_high'], interp_mode='trilinear')
-                    mlabel_high_out = self.st(mlabel_window_high, res['dvf_high'], interp_mode='nearest')
+                    mimage_high_out = self.spatial_transform(mimage_window_high, res['dvf_high'], mode='bilinear')
+                    mlabel_high_out = self.spatial_transform(mlabel_window_high, res['dvf_high'], mode='nearest')
                     out_fimage_dummies[tuple(out_slicer)] = np.transpose(mimage_high_out.cpu().numpy(), (0, 2, 3, 4, 1)) #BxDxWxHxC
                     out_reg_flabel_dummies[tuple(out_slicer)] = np.transpose(mlabel_high_out.cpu().numpy(), (0, 2, 3, 4, 1)) #BxDxWxHxC
                     out_flabel_dummies[tuple(out_slicer)] = np.transpose(segmentation.cpu().numpy(), (0, 2, 3, 4, 1)) #BxDxWxHxC
-                    out_dvf_dummies[tuple(out_slicer)] = res['dvf_high'].cpu().numpy() #BxDxWxHxC
+                    out_dvf_dummies[tuple(out_slicer)] = np.transpose(res['dvf_high'].cpu().numpy(), (0, 2, 3, 4, 1)) #BxDxWxHxC
 
                     if done:
                         break
@@ -501,20 +499,20 @@ class mtlAgent(BaseAgent):
 
                 flabel_itk = sitk.GetImageFromArray(np.squeeze(out_flabel_dummies.astype(np.uint8)))
                 flabel_itk.SetOrigin(im_itk.GetOrigin())
-                flabel_itk.SetSpacing([1., 1., 1.])
-                # flabel_itk.SetSpacing(im_itk.GetSpacing())
+                # flabel_itk.SetSpacing([1., 1., 1.])
+                flabel_itk.SetSpacing(im_itk.GetSpacing())
                 flabel_itk.SetDirection(im_itk.GetDirection())
 
                 reg_flabel_itk = sitk.GetImageFromArray(np.squeeze(out_reg_flabel_dummies.astype(np.uint8)))
                 reg_flabel_itk.SetOrigin(im_itk.GetOrigin())
-                reg_flabel_itk.SetSpacing([1., 1., 1.])
-                # reg_flabel_itk.SetSpacing(im_itk.GetSpacing())
+                # reg_flabel_itk.SetSpacing([1., 1., 1.])
+                reg_flabel_itk.SetSpacing(im_itk.GetSpacing())
                 reg_flabel_itk.SetDirection(im_itk.GetDirection())
 
                 fimage_itk = sitk.GetImageFromArray(np.squeeze(out_fimage_dummies.astype(np.int16)))
                 fimage_itk.SetOrigin(im_itk.GetOrigin())
-                fimage_itk.SetSpacing([1., 1., 1.])
-                # fimage_itk.SetSpacing(im_itk.GetSpacing())
+                # fimage_itk.SetSpacing([1., 1., 1.])
+                fimage_itk.SetSpacing(im_itk.GetSpacing())
                 fimage_itk.SetDirection(im_itk.GetDirection())
 
                 dvf_itk = sitk.GetImageFromArray(np.squeeze(out_dvf_dummies), isVector=True)
@@ -523,18 +521,18 @@ class mtlAgent(BaseAgent):
                 # dvf_itk.SetSpacing(im_itk.GetSpacing())
                 dvf_itk.SetDirection(im_itk.GetDirection())
 
-                save_dir = os.path.join(self.args.prediction_dir, dataset, inference_cases[i].split('/')[-4],
-                                           inference_cases[i].split('/')[-3])
+                save_dir = os.path.join(self.args.output_dir, dataset, inference_cases[i].split('/')[-3],
+                                           inference_cases[i].split('/')[-2])
                 if not os.path.exists(save_dir):
                     os.makedirs(save_dir)
-
+                print(save_dir)
                 sitk.WriteImage(flabel_itk, os.path.join(save_dir, 'Segmentation.mha'))
                 sitk.WriteImage(reg_flabel_itk, os.path.join(save_dir, 'ResampledSegmentation.mha'))
                 sitk.WriteImage(fimage_itk, os.path.join(save_dir, 'ResampledImage.mha'))
                 sitk.WriteImage(dvf_itk, os.path.join(save_dir, 'DVF.mha'))
 
     def eval(self):
-        evaluation_seg(self.args, self.config)
+        evaluation_seg(self.args, self.data_config)
 
 
     def finalize(self):
@@ -542,7 +540,7 @@ class mtlAgent(BaseAgent):
         Finalize all the operations of the 2 Main classes of the process the operator and the data loader
         :return:
         """
-        if self.args.debug or self.args.mode != 'train':
+        if self.args.is_debug or self.args.mode != 'train':
             pass
         else:
             self.logger.info("Please wait while finalizing the operation.. Thank you")

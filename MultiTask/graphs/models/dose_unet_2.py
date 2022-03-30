@@ -68,6 +68,6 @@ class DoseNet_2(nn.Module):
         # probs_list = [F.softmax(x, dim=1) for x in logits_list]
         # predicted_label_list = [torch.max(x, dim=1, keepdim=True)[1] for x in probs_list]
 
-        res = {'logits_low': logits_list[0], 'logits_mid': logits_list[1], 'logits_high': logits_list[2]}
+        res = {'logits_low': logits_list[1], 'logits_mid': logits_list[2], 'logits_high': logits_list[3]}
 
         return res

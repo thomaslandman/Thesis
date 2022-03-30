@@ -159,41 +159,54 @@ def make_2D_masks():
 
 def create_masks():
     data_dir = "/exports/lkeb-hpc/tlandman/Data/Patient_MHA/"
-    patient_list = sorted(os.listdir(data_dir))
+    data_dir_2 = "/exports/lkeb-hpc/tlandman/Thesis/MultiTask/experiments/Single-Task/Seg_input_If_Im_Sm/output/HMC/"
+    patient_list = sorted([f for f in os.listdir(data_dir_2) if os.path.isdir(os.path.join(data_dir_2, f))])
     for patient_idx in range(0, len(patient_list)):
         patient_dir = os.path.join(data_dir, patient_list[patient_idx])
-        scan_list = sorted([f for f in os.listdir(patient_dir) if os.path.isdir(os.path.join(patient_dir, f))])
+        patient_dir_2 = os.path.join(data_dir_2, patient_list[patient_idx])
+        scan_list = sorted([f for f in os.listdir(patient_dir_2) if os.path.isdir(os.path.join(patient_dir_2, f))])
         print(patient_list[patient_idx])
         for scan_idx in range(0, len(scan_list)):
-            if scan_idx == 1:
-                continue
+            # if scan_idx == 1:
+            #     continue
             scan_dir = os.path.join(patient_dir, scan_list[scan_idx])
+            scan_dir_2 = os.path.join(patient_dir_2, scan_list[scan_idx])
 
             reader = sitk.ImageFileReader()
             reader.SetImageIO("MetaImageIO")
-            file = os.path.join(scan_dir, 'Dose.mha')
+            file = os.path.join(scan_dir_2, 'Segmentation.mha')
             reader.SetFileName(file)
-            image = reader.Execute()
-            dose = np.array(sitk.GetArrayFromImage(image))
-            file = os.path.join(scan_dir, 'Segmentation.mha')
-            reader.SetFileName(file)
-            image = reader.Execute()
-            cont = np.array(sitk.GetArrayFromImage(image))
-            samp = np.zeros(np.shape(cont))
-            samp[:, :, :256] = 1
-            samp[:, :, 256:] = 2
-            samp = np.where(dose < 5, 0, samp)
-            samp = np.where(cont == 4, 3, samp)
-            samp = np.where(cont == 3, 4, samp)
-            samp = np.array(samp, dtype=np.uint8)
-            # plt.imshow(samp[50,:,:])
-            # plt.show()
-            samp_itk = sitk.GetImageFromArray(samp)
-            writer = sitk.ImageFileWriter()
-            mask_file = os.path.join(scan_dir, 'Sampler_New_2.mha')
-            writer.SetFileName(mask_file)
-            writer.Execute(samp_itk)
+            # image = reader.Execute()
+            # dose = np.array(sitk.GetArrayFromImage(image))
 
+            # reader.SetFileName(file)
+            cont_itk = reader.Execute()
+            cont = np.array(sitk.GetArrayFromImage(cont_itk))
+            mask = np.zeros(np.shape(cont))
+            coords = np.where(np.any(cont == 4, axis=2))
+            for i in range(np.shape(coords)[1]):
+                mask[coords[0][i], coords[1][i], :] = 1
+            coords = np.where(np.any(cont == 3, axis=2))
+            for i in range(np.shape(coords)[1]):
+                mask[coords[0][i], coords[1][i], :] = 2
+
+            file = os.path.join(scan_dir, 'masks/Torso.mha')
+            reader.SetFileName(file)
+            image = reader.Execute()
+            torso = sitk.GetArrayFromImage(image)
+            mask = np.where((torso == 1) & ((mask == 1) | (mask == 2)), mask, 0)
+            mask = np.array(mask, dtype=np.uint8)
+            mask_itk = sitk.GetImageFromArray(mask)
+            writer = sitk.ImageFileWriter()
+            output_seg_mask = os.path.join(scan_dir, 'output_targets_mask.mha')
+            writer.SetFileName(output_seg_mask)
+            # writer.Execute(mask_itk)
+            writer = sitk.ImageFileWriter()
+            output_cont= os.path.join(scan_dir, 'output_segmentation.mha')
+            writer.SetFileName(output_cont)
+            # writer.Execute(cont_itk)
+            plt.imshow(mask[50,:,:])
+            plt.show()
 
 
 create_masks()

@@ -1,4 +1,4 @@
-%% Set configurations
+% Set configurations
 clear;
 % visit_dates = readtable('/exports/lkeb-hpc/tlandman/Patient_Data/visits.csv', 'Delimiter', ',');
 % visit_dates = table2cell(visit_dates);

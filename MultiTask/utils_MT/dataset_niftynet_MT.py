@@ -13,7 +13,7 @@ from niftynet.io.image_reader import ImageReader
 from niftynet.engine.signal import TRAIN, VALID, INFER
 from niftynet.engine.sampler_grid_v2 import GridSampler
 from niftynet.io.image_sets_partitioner import ImageSetsPartitioner
-from utils.balanced_sampler import BalancedSampler as bs
+from utils_MT.balanced_sampler_MT import BalancedSampler as bs
 from utils.pad import PadLayer
 
 class DatasetNiftySampler(Dataset):

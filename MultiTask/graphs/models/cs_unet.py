@@ -39,10 +39,10 @@ class UNet(nn.Module):
         assert dim in (2, 3)
         self.dim = dim
         self.depth = depth
-        print(in_channels)
-        print(out_channels_seg)
-        print(dim)
-        print(depth)
+        # print(in_channels)
+        # print(out_channels_seg)
+        # print(dim)
+        # print(depth)
         prev_channels = in_channels
         self.down_path_seg = nn.ModuleList()
         self.down_path_reg = nn.ModuleList()
@@ -86,8 +86,8 @@ class UNet(nn.Module):
 
 
     def apply_cross_stitch(self, a, b, alpha):
-        print('apply cross-stitch:')
-        print(a.shape)
+        # print('apply cross-stitch:')
+        # print(a.shape)
 
         shape = a.shape
         newshape = [shape[0], shape[1],  shape[2] * shape[3] * shape[4]]  # [bs][n_f][x][y] ==> [bs][n_f][x*y]
@@ -122,11 +122,11 @@ class UNet(nn.Module):
         x_reg = x.clone()
 
         for i, (down_seg, down_reg) in enumerate(zip(self.down_path_seg, self.down_path_reg)):
-            print(i)
-            print(x_seg.shape)
+            # print(i)
+            # print(x_seg.shape)
             x_seg = down_seg(x_seg)
             x_reg = down_reg(x_reg)
-            print(x_seg.shape)
+            # print(x_seg.shape)
 
             if i < self.depth - 1:
 
@@ -137,36 +137,36 @@ class UNet(nn.Module):
                                       recompute_scale_factor=False)
                 x_reg = F.interpolate(x_reg, scale_factor=0.5, mode='trilinear', align_corners=True,
                                       recompute_scale_factor=False)
-                print('shape after pooling:')
-                print(x_seg.shape)
+                # print('shape after pooling:')
+                # print(x_seg.shape)
                 x_seg, x_reg = self.apply_cross_stitch(x_seg, x_reg, self.cs_unit_encoder[i])
 
         for i, (up_seg, up_reg, res_seg, res_reg) in enumerate(zip(self.up_path_seg, self.up_path_reg,
                                                                    self.res_list_seg, self.res_list_reg)):
-            print(i)
+            # print(i)
             if i == 0:
                 out_seg.append(res_seg(x_seg))
                 out_reg.append(res_reg(x_reg))
-                print('add to res list')
-                print(res_seg(x_seg).shape)
+                # print('add to res list')
+                # print(res_seg(x_seg).shape)
                 x_seg_before = up_seg(x_seg, blocks_seg[-i - 1])
                 x_reg_before = up_reg(x_reg, blocks_reg[-i - 1])
-                print(x_seg_before.shape)
+                # print(x_seg_before.shape)
                 x_seg, x_reg = self.apply_cross_stitch(x_seg_before, x_reg_before, self.cs_unit_decoder[i])
             else:
                 out_seg.append(res_seg(x_seg))
                 out_reg.append(res_reg(x_reg))
-                print('add to res list')
-                print(res_seg(x_seg).shape)
+                # print('add to res list')
+                # print(res_seg(x_seg).shape)
                 x_seg_before = up_seg(x_seg, blocks_seg[-i - 1])
                 x_reg_before = up_reg(x_reg, blocks_reg[-i - 1])
-                print(x_seg_before.shape)
+                # print(x_seg_before.shape)
                 x_seg, x_reg = self.apply_cross_stitch(x_seg_before, x_reg_before, self.cs_unit_decoder[i])
 
         out_seg.append(self.res_list_seg[-1](x_seg))
         out_reg.append(self.res_list_reg[-1](x_reg))
-        print('add to res list')
-        print(self.res_list_seg[-1](x_seg).shape)
+        # print('add to res list')
+        # print(self.res_list_seg[-1](x_seg).shape)
 
         return out_seg, out_reg
 
