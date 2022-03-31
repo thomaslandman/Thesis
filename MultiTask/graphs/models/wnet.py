@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
-from . import unet_2
+import torch.nn.functional as F
+from . import w_unet1, w_unet2
 
 
 class WNet(nn.Module):
@@ -21,17 +22,17 @@ class WNet(nn.Module):
         List of number of channels at every depth in case of customized number of channels.
     '''
 
-    def __init__(self, in_channels_1=2, classes_1=5, depth_1=3, in_channels_2=6, classes_2=1, depth_2=4, initial_channels=16, channels_list = None):
+    def __init__(self, in_channels_1=2, classes_1=5, depth_1=3, in_channels_2=7, classes_2=1, depth_2=4, initial_channels=16, channels_list = None):
 
         super().__init__()
         # self.num_Classes = classes
         # self.channels_list = channels_list
         # assert len(channels_list) == depth
 
-        self.unet_1 = unet_2.UNet(in_channels=in_channels_1, out_channels=classes_1, depth=depth_1,
+        self.unet_1 = w_unet1.UNet(in_channels=in_channels_1, out_channels=classes_1, depth=depth_1,
                               initial_channels=initial_channels, channels_list=[16,32,64])
 
-        self.unet_2 = unet_2.UNet(in_channels=in_channels_2, out_channels=classes_2, depth=depth_2,
+        self.unet_2 = w_unet2.UNet(in_channels=in_channels_2, out_channels=classes_2, depth=depth_2,
                                   initial_channels=initial_channels, channels_list=[16,32,64,128])
 
 
@@ -47,18 +48,42 @@ class WNet(nn.Module):
             logits of the images.
         '''
 
-        input_seg = fixed_image
+        input_1 = fixed_image
         if moving_image != None:
-            input_seg = torch.cat((input_seg, moving_image), dim=1)
+            input_1 = torch.cat((input_1, moving_image), dim=1)
 
         if moving_segmentation != None:
-            input_seg = torch.cat((input_seg, moving_segmentation), dim=1)
+            input_1 = torch.cat((input_1, moving_segmentation), dim=1)
 
-        logits_list = self.unet_1(input_seg)
+        logits_list, feature_maps = self.unet_1(input_1)
 
         # probs_list = [F.softmax(x, dim=1) for x in logits_list]
         # predicted_label_list = [torch.max(x, dim=1, keepdim=True)[1] for x in probs_list]
 
-        res = {'logits_low': logits_list[0], 'logits_mid': logits_list[1], 'logits_high': logits_list[2]}
+        res_1 = {'logits_low': logits_list[0], 'logits_mid': logits_list[1], 'logits_high': logits_list[2]}
 
-        return res
+        # maxima = torch.max(logits_list[2], dim=1, keepdim=True)[0]
+
+        # input_2 = F.softmax(logits_list[2], dim=1)
+        #
+        # # print(input_2.shape)
+        # # print(input_2.dtype)
+        # # print(input_2.requires_grad)
+        #
+        # input_2 = torch.cat((input_2, fixed_image), dim=1)
+        #
+        # if moving_dose != None:
+        #     input_2 = torch.cat((input_2, moving_dose), dim=1)
+        #
+        #
+        # if moving_image != None:
+        #     input_2 = torch.cat((input_2, moving_image), dim=1)
+        #
+        # # print('second unet')
+        # logits_list = self.unet_2(input_2, feature_maps)
+        #
+        # res_2 = {'logits_low': logits_list[1], 'logits_mid': logits_list[2], 'logits_high': logits_list[3]}
+        #
+        # # print(len(res_2))
+        res_2 = None
+        return res_1, res_2

@@ -53,8 +53,9 @@ class UNet(nn.Module):
     def forward(self, x):
         blocks = []
         out = []
+        feature_maps = []
         for i, down in enumerate(self.down_path):
-            # print(x.shape)
+            print(x.shape)
             x = down(x)
             if i < self.depth - 1:
                 blocks.append(x)
@@ -62,18 +63,30 @@ class UNet(nn.Module):
                                   recompute_scale_factor=False)
 
         for i, (up, res) in enumerate(zip(self.up_path, self.res_list)):
-            # print(x.shape)
             if i == 0:
-                # if self.args.depth == 4:
-                # x = F.interpolate(x, scale_factor=2.0, mode='trilinear', align_corners=True)
+                print(x.shape)
                 out.append(res(x))
+                feature_maps.append(x)
                 x = up(x, blocks[-i - 1])
             else:
+                print(x.shape)
                 out.append(res(x))
+                feature_maps.append(x)
                 x = up(x, blocks[-i - 1])
 
         out.append(self.res_list[-1](x))
-        return out
+        feature_maps.append(x)
+        print('outputs')
+        print(len(out))
+        print(out[0].shape)
+        print(out[1].shape)
+        print(out[2].shape)
+        print('feature maps')
+        print(len(feature_maps))
+        print(feature_maps[0].shape)
+        print(feature_maps[1].shape)
+        print(feature_maps[2].shape)
+        return out, feature_maps
 
 
 class ConvBlock(nn.Module):
@@ -103,7 +116,11 @@ class UpBlock(nn.Module):
         self.conv_block = ConvBlock(in_channels, out_channels)
 
     def forward(self, x, skip):
+        print('before upconv')
+        print(x.shape)
         x_up_conv = F.interpolate(x, scale_factor=2.0, mode='trilinear', align_corners=True)
+        print('after upconv')
+        print(x_up_conv.shape)
         if skip.shape[2] < x_up_conv.shape[2]:
             cropped = F.pad(skip, (1,1,1,1,1,1))
         else:
@@ -111,5 +128,9 @@ class UpBlock(nn.Module):
             upper = int(skip.shape[2] - lower)
             cropped = skip[:, :, lower:upper, lower:upper, lower:upper]
         out = torch.cat([x_up_conv, cropped], 1)
+        print('after concat')
+        print(out.shape)
         out = self.conv_block(out)
+        print('after conv')
+        print(out.shape)
         return out

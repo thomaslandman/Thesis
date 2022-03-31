@@ -1,7 +1,7 @@
 {
 
   "seed": 42,
-  "num_threads":8,
+  "num_threads":5,
 
   "num_classes_seg": 5,
   "num_classes_reg": 3,
@@ -16,8 +16,8 @@
   "padding_size": [50,50,50],
   "out_diff_size": [48,48,48],
   "voxel_dim": [1.0, 1.0, 1.0],
-  "windows_per_volume": 8,
-  "level_weights": [0.3333,0.3333,0.3333],
+  "windows_per_volume": 4,
+  "level_weights": [0.333, 0.333, 0.333],
   "ncc_window_size":9,
 
   "batch_size": 1,

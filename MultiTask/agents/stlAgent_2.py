@@ -184,7 +184,7 @@ class stlAgent_2(BaseAgent):
 
             # forward pass
             if self.args.network == 'w-net':
-                res = self.model(data_dict['fimage'], moving_segmentation=data_dict['mlabel'])
+                res_1, res_2 = self.model(data_dict['fimage'], moving_segmentation=data_dict['mlabel'], moving_dose=data_dict['mdose'])
             else:
                 if 'Sf' in self.args.input and len(self.args.input) == 1:
                     res = self.model(data_dict['flabel'])
@@ -272,9 +272,9 @@ class stlAgent_2(BaseAgent):
                 loss = mse_loss
 
             elif self.args.network == 'w-net':
-                dsc_loss_high, dsc_list_high = self.dsc_loss(data_dict['flabel_high'], res['logits_high'])
-                dsc_loss_mid, dsc_list_mid = self.dsc_loss(data_dict['flabel_mid'], res['logits_mid'])
-                dsc_loss_low, dsc_list_low = self.dsc_loss(data_dict['flabel_low'], res['logits_low'])
+                dsc_loss_high, dsc_list_high = self.dsc_loss(data_dict['flabel_high'], res_1['logits_high'])
+                dsc_loss_mid, dsc_list_mid = self.dsc_loss(data_dict['flabel_mid'], res_1['logits_mid'])
+                dsc_loss_low, dsc_list_low = self.dsc_loss(data_dict['flabel_low'], res_1['logits_low'])
 
                 dsc_loss = self.args.level_weights[0] * dsc_loss_high + \
                            self.args.level_weights[1] * dsc_loss_mid + \
@@ -353,7 +353,7 @@ class stlAgent_2(BaseAgent):
 
                 # forward pass
                 if self.args.network == 'w-net':
-                    res = self.model(data_dict['fimage'], moving_segmentation=data_dict['mlabel'])
+                    res_1, res_2 = self.model(data_dict['fimage'], moving_segmentation=data_dict['mlabel'], moving_dose=data_dict['mdose'])
                 else:
                     if 'Sf' in self.args.input and len(self.args.input) == 1:
                         res = self.model(data_dict['flabel'])
@@ -441,9 +441,9 @@ class stlAgent_2(BaseAgent):
                     loss = mse_loss
 
                 elif self.args.network == 'w-net':
-                    dsc_loss_high, dsc_list_high = self.dsc_loss(data_dict['flabel_high'], res['logits_high'])
-                    dsc_loss_mid, dsc_list_mid = self.dsc_loss(data_dict['flabel_mid'], res['logits_mid'])
-                    dsc_loss_low, dsc_list_low = self.dsc_loss(data_dict['flabel_low'], res['logits_low'])
+                    dsc_loss_high, dsc_list_high = self.dsc_loss(data_dict['flabel_high'], res_1['logits_high'])
+                    dsc_loss_mid, dsc_list_mid = self.dsc_loss(data_dict['flabel_mid'], res_1['logits_mid'])
+                    dsc_loss_low, dsc_list_low = self.dsc_loss(data_dict['flabel_low'], res_1['logits_low'])
 
                     dsc_loss = self.args.level_weights[0] * dsc_loss_high + \
                                self.args.level_weights[1] * dsc_loss_mid + \
@@ -492,10 +492,10 @@ class stlAgent_2(BaseAgent):
                            epoch_ncc))
 
             elif self.args.network == 'Dose':
-                self.logger.info('{} totalLoss: {:.4f}'.format('validation', epoch_loss))
+                self.logger.info('{} total loss: {:.4f}'.format('Validation', epoch_loss))
 
             elif self.args.network == 'w-net':
-                self.logger.info('{} totalLoss: {:.4f}'.format('Training', epoch_loss))
+                self.logger.info('{} total loss: {:.4f}'.format('Validation', epoch_loss))
 
     def inference(self):
 

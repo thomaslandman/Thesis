@@ -53,7 +53,9 @@ class UNet(nn.Module):
     def forward(self, x):
         blocks = []
         out = []
+        feature_maps = []
         for i, down in enumerate(self.down_path):
+            # print(x.shape)
             x = down(x)
             if i < self.depth - 1:
                 blocks.append(x)
@@ -61,18 +63,21 @@ class UNet(nn.Module):
                                   recompute_scale_factor=False)
 
         for i, (up, res) in enumerate(zip(self.up_path, self.res_list)):
-
             if i == 0:
-                # if self.args.depth == 4:
-                x = F.interpolate(x, scale_factor=2.0, mode='trilinear', align_corners=True)
+                # print(x.shape)
                 out.append(res(x))
+                feature_maps.append(x)
                 x = up(x, blocks[-i - 1])
             else:
+                # print(x.shape)
                 out.append(res(x))
+                feature_maps.append(x)
                 x = up(x, blocks[-i - 1])
 
         out.append(self.res_list[-1](x))
-        return out
+        feature_maps.append(x)
+
+        return out, feature_maps
 
 
 class ConvBlock(nn.Module):
@@ -80,11 +85,11 @@ class ConvBlock(nn.Module):
         super().__init__()
         block = []
 
-        block.append(nn.Conv3d(in_channels, out_channels, kernel_size=3, padding=0 , padding_mode='zeros'))
+        block.append(nn.Conv3d(in_channels, out_channels, kernel_size=3, padding=1 , padding_mode='replicate'))
         block.append(nn.BatchNorm3d(out_channels))
         block.append(nn.LeakyReLU(LeakyReLU_slope))
 
-        block.append(nn.Conv3d(out_channels, out_channels, kernel_size=3, padding=0, padding_mode='zeros'))
+        block.append(nn.Conv3d(out_channels, out_channels, kernel_size=3, padding=1, padding_mode='replicate'))
         block.append(nn.LeakyReLU(LeakyReLU_slope))
         block.append(nn.BatchNorm3d(out_channels))
 
@@ -102,7 +107,11 @@ class UpBlock(nn.Module):
         self.conv_block = ConvBlock(in_channels, out_channels)
 
     def forward(self, x, skip):
+        # print('before upconv')
+        # print(x.shape)
         x_up_conv = F.interpolate(x, scale_factor=2.0, mode='trilinear', align_corners=True)
+        # print('after upconv')
+        # print(x_up_conv.shape)
         if skip.shape[2] < x_up_conv.shape[2]:
             cropped = F.pad(skip, (1,1,1,1,1,1))
         else:
@@ -110,5 +119,9 @@ class UpBlock(nn.Module):
             upper = int(skip.shape[2] - lower)
             cropped = skip[:, :, lower:upper, lower:upper, lower:upper]
         out = torch.cat([x_up_conv, cropped], 1)
+        # print('after concat')
+        # print(out.shape)
         out = self.conv_block(out)
+        # print('after conv')
+        # print(out.shape)
         return out

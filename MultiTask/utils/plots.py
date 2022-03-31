@@ -212,9 +212,9 @@ def planning_daily_dose():
 
     plt.show()
 
-planning_daily_dose()
+# planning_daily_dose()
 # DVH_plot()
-# scan = 'Patient_04/visit_20070622'
-# daily_cont = read_mha(os.path.join('/exports/lkeb-hpc/tlandman/Data/Patient_MHA', scan, 'Segmentation.mha'))
-# plt.imshow(daily_cont[60,:,:])
-# plt.show()
+scan = 'Patient_04/visit_20070622'
+daily_cont = read_mha(os.path.join('/exports/lkeb-hpc/tlandman/Data/Patient_MHA', scan, 'Segmentation.mha'))
+plt.imshow(daily_cont[70,:,:])
+plt.show()

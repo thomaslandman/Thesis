@@ -76,7 +76,7 @@ def balanced_spatial_coordinates(n_samples, img_spatial_size, win_spatial_size, 
     # label_counts = np.random.multinomial(n_samples, class_probs)
     label_counts = np.floor(np.asarray(class_probs)*n_samples).astype(int)
     # print(label_counts)
-    label_counts = np.array([1, 1, 4, 2])
+    label_counts = np.array([1, 1, 1, 1])
 
     #label_counts = np.floor(np.asarray(class_probs) * n_samples).astype(int)
     # print(label_counts)

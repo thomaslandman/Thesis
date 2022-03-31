@@ -6,9 +6,9 @@ from utils.generate_jobs import submit_job
 setting = dict()
 setting['cluster_manager'] = 'Slurm'
 setting['NumberOfGPU'] = 1
-setting['cluster_MemPerCPU'] = 7500
-setting['cluster_NumberOfCPU'] = 4             # Number of CPU per job
-setting['cluster_NodeList'] = 'res-hpc-lkeb03'  # ['res-hpc-gpu01','res-hpc-gpu02','res-hpc-lkeb03',---,'res-hpc-lkeb07']
+setting['cluster_MemPerCPU'] = 9500
+setting['cluster_NumberOfCPU'] = 5             # Number of CPU per job
+setting['cluster_NodeList'] = 'res-hpc-lkeb06'  # ['res-hpc-gpu01','res-hpc-gpu02','res-hpc-lkeb03',---,'res-hpc-lkeb07']
 
 
 if 'lkeb' in setting['cluster_NodeList']:
