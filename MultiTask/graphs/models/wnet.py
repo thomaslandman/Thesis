@@ -36,7 +36,7 @@ class WNet(nn.Module):
                                   initial_channels=initial_channels, channels_list=[16,32,64,128])
 
 
-    def forward(self, fixed_image, moving_image=None, moving_segmentation=None, moving_dose=None):
+    def forward(self, fixed_image, moving_image=None, moving_segmentation=None, moving_dose=None, fixed_segmentation=None):
         '''
         Parameters
         ----------
@@ -62,28 +62,30 @@ class WNet(nn.Module):
 
         res_1 = {'logits_low': logits_list[0], 'logits_mid': logits_list[1], 'logits_high': logits_list[2]}
 
-        # maxima = torch.max(logits_list[2], dim=1, keepdim=True)[0]
+        # # maxima = torch.max(logits_list[2], dim=1, keepdim=True)[0]
 
-        # input_2 = F.softmax(logits_list[2], dim=1)
-        #
-        # # print(input_2.shape)
-        # # print(input_2.dtype)
-        # # print(input_2.requires_grad)
-        #
-        # input_2 = torch.cat((input_2, fixed_image), dim=1)
-        #
-        # if moving_dose != None:
-        #     input_2 = torch.cat((input_2, moving_dose), dim=1)
-        #
-        #
-        # if moving_image != None:
-        #     input_2 = torch.cat((input_2, moving_image), dim=1)
-        #
-        # # print('second unet')
-        # logits_list = self.unet_2(input_2, feature_maps)
-        #
-        # res_2 = {'logits_low': logits_list[1], 'logits_mid': logits_list[2], 'logits_high': logits_list[3]}
-        #
-        # # print(len(res_2))
-        res_2 = None
+        ### Edit out or in
+
+        input_2 = F.softmax(logits_list[2], dim=1)
+
+        # print(input_2.shape)
+        # print(input_2.dtype)
+        # print(input_2.requires_grad)
+
+        input_2 = torch.cat((input_2, fixed_image), dim=1)
+
+        if moving_dose != None:
+            input_2 = torch.cat((input_2, moving_dose), dim=1)
+
+
+        if moving_image != None:
+            input_2 = torch.cat((input_2, moving_image), dim=1)
+
+        # print('second unet')
+        logits_list = self.unet_2(input_2, feature_maps)
+
+        res_2 = {'logits_low': logits_list[1], 'logits_mid': logits_list[2], 'logits_high': logits_list[3]}
+
+        # print(len(res_2))
+
         return res_1, res_2

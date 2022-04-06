@@ -1,6 +1,7 @@
-import torch
 import torch.nn.functional as F
 from torch import nn
+
+from .unet import ConvBlock, UpBlock
 
 
 class UNet(nn.Module):
@@ -13,8 +14,8 @@ class UNet(nn.Module):
     ----------
     in_channels : int
         number of input channels.
-    out_channels : int
-        number of output channels.
+    out_channels_seg : int
+        number of output classes for the segmentation task.
     depth : int, optional
         Depth of the network. The maximum number of channels will be 2**(depth - 1) times than the initial_channels. The default is 5.
     initial_channels : TYPE, optional
@@ -23,13 +24,15 @@ class UNet(nn.Module):
         List of number of channels at every depth in case of customized number of channels.
     '''
 
-    def __init__(self, in_channels, out_channels, depth=5, initial_channels=32, channels_list= None):
+    def __init__(self, in_channels, out_channels_seg=5, dim=3, depth=5, initial_channels=32, channels_list= None):
 
         super().__init__()
         self.depth = depth
         prev_channels = in_channels
         self.down_path = nn.ModuleList()
-        self.res_list = nn.ModuleList()
+        self.res_list_seg = nn.ModuleList()
+        self.res_list_reg = nn.ModuleList()
+        self.res_list_dose = nn.ModuleList()
         for i in range(self.depth):
             if channels_list == None:
                 current_channels = 2 ** i * initial_channels
@@ -46,13 +49,20 @@ class UNet(nn.Module):
                 current_channels = channels_list[i]
             self.up_path.append(UpBlock(prev_channels+current_channels, current_channels))
             prev_channels = current_channels
-            self.res_list.append(nn.Conv3d(channels_list[i+1], out_channels, kernel_size=1))
+            self.res_list_seg.append(nn.Conv3d(channels_list[i + 1], out_channels_seg, kernel_size=1))
+            self.res_list_reg.append(nn.Conv3d(channels_list[i + 1], dim, kernel_size=1))
+            self.res_list_dose.append(nn.Conv3d(channels_list[i + 1], 1, kernel_size=1))
 
-        self.res_list.append(nn.Conv3d(channels_list[0], out_channels, kernel_size=1))
+        self.res_list_seg.append(nn.Conv3d(channels_list[0], out_channels_seg, kernel_size=1))
+        self.res_list_reg.append(nn.Conv3d(channels_list[0], dim, kernel_size=1))
+        self.res_list_dose.append(nn.Conv3d(channels_list[0], 1, kernel_size=1))
 
     def forward(self, x):
         blocks = []
-        out = []
+        out_seg = []
+        out_reg = []
+        out_dose = []
+
         for i, down in enumerate(self.down_path):
             x = down(x)
             if i < self.depth - 1:
@@ -60,55 +70,24 @@ class UNet(nn.Module):
                 x = F.interpolate(x, scale_factor=0.5, mode='trilinear', align_corners=True,
                                   recompute_scale_factor=False)
 
-        for i, (up, res) in enumerate(zip(self.up_path, self.res_list)):
+        for i, (up, res_seg, res_reg, res_dose) in enumerate(zip(self.up_path, self.res_list_seg, self.res_list_reg, self.res_list_dose)):
 
             if i == 0:
                 # if self.args.depth == 4:
                 x = F.interpolate(x, scale_factor=2.0, mode='trilinear', align_corners=True)
-                # out.append(res(x))
+                # out_seg.append(res_seg(x))
+                # out_reg.append(res_reg(x))
+                # out_dose.append(res_dose(x))
+
                 x = up(x, blocks[-i - 1])
             else:
-                out.append(res(x))
+                out_seg.append(res_seg(x))
+                out_reg.append(res_reg(x))
+                out_dose.append(res_dose(x))
                 x = up(x, blocks[-i - 1])
 
-        out.append(self.res_list[-1](x))
-        return out
+        out_seg.append(self.res_list_seg[-1](x))
+        out_reg.append(self.res_list_reg[-1](x))
+        out_dose.append(self.res_list_dose[-1](x))
 
-
-class ConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, LeakyReLU_slope=0.2):
-        super().__init__()
-        block = []
-
-        block.append(nn.Conv3d(in_channels, out_channels, kernel_size=3, padding=0 , padding_mode='zeros'))
-        block.append(nn.BatchNorm3d(out_channels))
-        block.append(nn.LeakyReLU(LeakyReLU_slope))
-
-        block.append(nn.Conv3d(out_channels, out_channels, kernel_size=3, padding=0, padding_mode='zeros'))
-        block.append(nn.LeakyReLU(LeakyReLU_slope))
-        block.append(nn.BatchNorm3d(out_channels))
-
-        self.block = nn.Sequential(*block)
-
-    def forward(self, x):
-        out = self.block(x)
-        return out
-
-
-class UpBlock(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super().__init__()
-
-        self.conv_block = ConvBlock(in_channels, out_channels)
-
-    def forward(self, x, skip):
-        x_up_conv = F.interpolate(x, scale_factor=2.0, mode='trilinear', align_corners=True)
-        if skip.shape[2] < x_up_conv.shape[2]:
-            cropped = F.pad(skip, (1,1,1,1,1,1))
-        else:
-            lower = int((skip.shape[2] - x_up_conv.shape[2]) / 2)
-            upper = int(skip.shape[2] - lower)
-            cropped = skip[:, :, lower:upper, lower:upper, lower:upper]
-        out = torch.cat([x_up_conv, cropped], 1)
-        out = self.conv_block(out)
-        return out
+        return out_seg, out_reg, out_dose

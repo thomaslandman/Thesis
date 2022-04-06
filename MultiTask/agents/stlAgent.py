@@ -65,7 +65,7 @@ class stlAgent(BaseAgent):
                 self.spatial_transform = SpatialTransformer(dim=self.args.num_classes)
 
             elif self.args.network == 'Dose':
-                if len(self.args.input) == 4:
+                if "Ma" in self.args.input:
                     self.model = DoseNet_2(in_channels=len(self.args.input)+2, classes=1,
                                      depth=self.args.depth, initial_channels=self.args.initial_channels,
                                      channels_list=self.args.num_featurmaps).to(self.args.device)
@@ -74,7 +74,7 @@ class stlAgent(BaseAgent):
                     self.model = DoseNet(in_channels=len(self.args.input), classes=1,
                                      depth=self.args.depth, initial_channels=self.args.initial_channels,
                                      channels_list=self.args.num_featurmaps).to(self.args.device)
-                    self.mse_loss = nn.MSELoss().to(self.args.device)
+                    self.mse_loss = Weighted_MSELoss().to(self.args.device)
 
 
             else:
@@ -260,6 +260,7 @@ class stlAgent(BaseAgent):
                 mse_loss = self.args.level_weights[0] * mse_loss_high + \
                            self.args.level_weights[1] * mse_loss_mid + \
                            self.args.level_weights[2] * mse_loss_low
+                # mse_loss = mse_loss_high
                 loss = mse_loss
 
             # backpropagation

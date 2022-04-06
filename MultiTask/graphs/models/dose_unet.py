@@ -32,7 +32,7 @@ class DoseNet(nn.Module):
                               initial_channels=initial_channels, channels_list= channels_list)
 
 
-    def forward(self, fixed_segmentation=None, fixed_image=None, moving_dose=None):
+    def forward(self, fixed_image, moving_image=None, moving_segmentation=None, moving_dose=None):
         '''
         Parameters
         ----------
@@ -43,24 +43,17 @@ class DoseNet(nn.Module):
         logits : (n, classes, d, h, w)
             logits of the images.
         '''
-        if fixed_image == None and moving_dose == None:
-            input_image = fixed_segmentation
 
-        elif fixed_segmentation == None and fixed_image == None:
-            input_image = moving_dose
+        input_image = fixed_image
 
-        elif moving_dose == None:
-            input_image = torch.cat((fixed_segmentation, fixed_image), dim=1) # (n, 1, d, h, w)
+        if moving_image != None:
+            input_image = torch.cat((input_image, moving_image), dim=1)
 
-        elif False:    #change later not a good method of showing to use this one
-            target = torch.where(fixed_segmentation == 4, 1, 0)
-            target = torch.where(fixed_segmentation == 3, 2, target)
-            oar = torch.where(fixed_segmentation == 2, 1, 0)
-            oar = torch.where(fixed_segmentation == 1, 2, oar)
-            input_image = torch.cat((target, oar, fixed_image, moving_dose), dim=1)  # (n, 1, d, h, w)
+        if moving_segmentation != None:
+            input_image = torch.cat((input_image, moving_segmentation), dim=1)
 
-        else:
-            input_image = torch.cat((fixed_segmentation, fixed_image, moving_dose), dim=1)  # (n, 1, d, h, w)
+        if moving_dose != None:
+            input_image = torch.cat((input_image, moving_dose), dim=1)
 
         logits_list = self.unet(input_image)
         # probs_list = [F.softmax(x, dim=1) for x in logits_list]

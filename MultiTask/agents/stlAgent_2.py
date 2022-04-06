@@ -13,6 +13,7 @@ from graphs.models.regnet import RegNet
 from graphs.models.segnet import SegNet
 from graphs.models.dose_unet import DoseNet
 from graphs.models.dose_unet_2 import DoseNet_2
+from graphs.models.dose_densenet import DenseNet
 from graphs.models.wnet import WNet
 from utils import dataset_niftynet as dset_utils
 from utils.SpatialTransformer import SpatialTransformer
@@ -79,8 +80,18 @@ class stlAgent_2(BaseAgent):
 
             elif self.args.network == 'w-net':
                 self.model = WNet().to(self.args.device)
-                self.args.phase = 'seg'
+                self.model.unet_1.requires_grad_(True)
+                # self.args.phase = 'seg'
+                self.args.phase = 'dose'
                 self.dsc_loss = Dice().to(self.args.device)
+                self.mse_loss = Weighted_MSELoss().to(self.args.device)
+
+            elif self.args.network == 'dense':
+                self.model = DenseNet(in_channels=4, depth=4, initial_channels=32, channels_list=self.args.num_featurmaps).to(self.args.device)
+                self.ncc_loss = NCC(3, self.args.ncc_window_size).to(self.args.device)
+                self.smooth_loss = GradientSmoothing(energy_type='bending')
+                self.dsc_loss = Dice().to(self.args.device)
+                self.spatial_transform = SpatialTransformer(dim=3)
                 self.mse_loss = Weighted_MSELoss().to(self.args.device)
 
 
@@ -170,6 +181,9 @@ class stlAgent_2(BaseAgent):
         running_dsc_loss = 0.
         running_dsc = 0.
         running_ncc = 0.
+        running_reg_dsc_loss = 0.
+        running_seg_dsc_loss = 0.
+        running_mse_loss = 0.
         epoch_samples = 0
 
         for batch_idx, (fimage, flabel, fdose, ftorso, mimage, mlabel, mdose) in enumerate(self.dataloaders['training'],
@@ -185,6 +199,8 @@ class stlAgent_2(BaseAgent):
             # forward pass
             if self.args.network == 'w-net':
                 res_1, res_2 = self.model(data_dict['fimage'], moving_segmentation=data_dict['mlabel'], moving_dose=data_dict['mdose'])
+            if self.args.network == 'dense':
+                res = self.model(data_dict['fimage'], moving_image=data_dict['mimage'], moving_segmentation=data_dict['mlabel'], moving_dose=data_dict['mdose'])
             else:
                 if 'Sf' in self.args.input and len(self.args.input) == 1:
                     res = self.model(data_dict['flabel'])
@@ -280,7 +296,75 @@ class stlAgent_2(BaseAgent):
                            self.args.level_weights[1] * dsc_loss_mid + \
                            self.args.level_weights[2] * dsc_loss_low
 
-                loss = dsc_loss
+                mse_loss_high = self.mse_loss(data_dict['fdose_high'], res_2['logits_high'], data_dict['flabel_high'])
+                mse_loss_mid = self.mse_loss(data_dict['fdose_mid'], res_2['logits_mid'], data_dict['flabel_mid'])
+                mse_loss_low = self.mse_loss(data_dict['fdose_low'], res_2['logits_low'], data_dict['flabel_low'])
+                # mse_loss_high = self.mse_loss(data_dict['fdose_high'], res['logits_high'])
+                # mse_loss_mid  = self.mse_loss(data_dict['fdose_mid'] , res['logits_mid'])
+                # mse_loss_low  = self.mse_loss(data_dict['fdose_low'] , res['logits_low'])
+
+                mse_loss = self.args.level_weights[0] * mse_loss_high + \
+                           self.args.level_weights[1] * mse_loss_mid + \
+                           self.args.level_weights[2] * mse_loss_low
+
+                loss = dsc_loss + 0.02 * mse_loss
+
+            elif self.args.network == 'dense':
+
+                mimage_high_out = self.spatial_transform(data_dict['mimage_high'], res['dvf_high'])
+                mimage_mid_out = self.spatial_transform(data_dict['mimage_mid'], res['dvf_mid'])
+                mimage_low_out = self.spatial_transform(data_dict['mimage_low'], res['dvf_low'])
+
+                mlabel_high_out = self.spatial_transform(data_dict['mlabel_high_hot'], res['dvf_high'], mode='nearest')
+                mlabel_mid_out = self.spatial_transform(data_dict['mlabel_mid_hot'], res['dvf_mid'], mode='nearest')
+                mlabel_low_out = self.spatial_transform(data_dict['mlabel_low_hot'], res['dvf_low'], mode='nearest')
+
+                reg_dsc_loss_high, reg_dsc_list_high = self.dsc_loss(data_dict['flabel_high'], mlabel_high_out,
+                                                                     use_activation=False)
+                reg_dsc_loss_mid, reg_dsc_list_mid = self.dsc_loss(data_dict['flabel_mid'], mlabel_mid_out,
+                                                                   use_activation=False)
+                reg_dsc_loss_low, reg_dsc_list_low = self.dsc_loss(data_dict['flabel_low'], mlabel_low_out,
+                                                                   use_activation=False)
+
+                ncc_loss_high = self.ncc_loss(data_dict['fimage_high'], mimage_high_out)
+                ncc_loss_mid = self.ncc_loss(data_dict['fimage_mid'], mimage_mid_out)
+                ncc_loss_low = self.ncc_loss(data_dict['fimage_low'], mimage_low_out)
+
+                smooth_loss_high = self.smooth_loss(res['dvf_high'])
+                smooth_loss_mid = self.smooth_loss(res['dvf_mid'])
+                smooth_loss_low = self.smooth_loss(res['dvf_low'])
+
+                reg_dsc_loss = self.args.level_weights[0] * reg_dsc_loss_high + \
+                           self.args.level_weights[1] * reg_dsc_loss_mid + \
+                           self.args.level_weights[2] * reg_dsc_loss_low
+
+                ncc_loss = self.args.level_weights[0] * ncc_loss_high + \
+                           self.args.level_weights[1] * ncc_loss_mid + \
+                           self.args.level_weights[2] * ncc_loss_low
+
+                smooth_loss = self.args.level_weights[0] * smooth_loss_high + \
+                              self.args.level_weights[1] * smooth_loss_mid + \
+                              self.args.level_weights[2] * smooth_loss_low
+
+                reg_loss = ncc_loss + self.args.w_bending_energy * smooth_loss + reg_dsc_loss
+
+                dsc_loss_high, dsc_list_high = self.dsc_loss(data_dict['flabel_high'], res['logits_high'])
+                dsc_loss_mid, dsc_list_mid = self.dsc_loss(data_dict['flabel_mid'], res['logits_mid'])
+                dsc_loss_low, dsc_list_low = self.dsc_loss(data_dict['flabel_low'], res['logits_low'])
+
+                seg_loss = self.args.level_weights[0] * dsc_loss_high + \
+                           self.args.level_weights[1] * dsc_loss_mid + \
+                           self.args.level_weights[2] * dsc_loss_low
+
+                mse_loss_high = self.mse_loss(data_dict['fdose_high'], res['dose_high'], data_dict['flabel_high'])
+                mse_loss_mid = self.mse_loss(data_dict['fdose_mid'], res['dose_mid'], data_dict['flabel_mid'])
+                mse_loss_low = self.mse_loss(data_dict['fdose_low'], res['dose_low'], data_dict['flabel_low'])
+
+                mse_loss = self.args.level_weights[0] * mse_loss_high + \
+                           self.args.level_weights[1] * mse_loss_mid + \
+                           self.args.level_weights[2] * mse_loss_low
+
+                loss = reg_loss + seg_loss + 0.02 * mse_loss
 
             # backpropagation
             loss.backward()
@@ -292,11 +376,17 @@ class stlAgent_2(BaseAgent):
             running_loss += loss.item() * fimage.size(0)
             if self.args.network == 'Reg' or self.args.network == 'Seg':
                 running_dsc_loss += dsc_loss.item() * fimage.size(0)
-                running_dsc += (1.0 - dsc_loss.item()) * fimage.size(0)
-            if self.args.network == 'Reg':
+            if self.args.network == 'Reg' or self.args.network == 'dense' :
                 running_ncc_loss += ncc_loss.item() * fimage.size(0)
-                running_ncc += (1.0 - ncc_loss.item()) * fimage.size(0)
                 running_smooth_loss += smooth_loss.item() * fimage.size(0)
+            if self.args.network == 'dense':
+                running_reg_dsc_loss += reg_dsc_loss.item() * fimage.size(0)
+                running_seg_dsc_loss += seg_loss.item() * fimage.size(0)
+                running_mse_loss += mse_loss.item() * fimage.size(0)
+            if self.args.network == 'w-net':
+                running_dsc_loss += dsc_loss.item() * fimage.size(0)
+
+                running_mse_loss += mse_loss.item() * fimage.size(0)
 
             self.data_iteration = (self.current_iteration + 1) * nbatches * wsize
             self.current_iteration += 1
@@ -313,6 +403,7 @@ class stlAgent_2(BaseAgent):
         if self.args.network == 'Seg':
             self.logger.info('{} totalLoss: {:.4f} dscLoss: {:.4f} dsc: {:.4f}'.
                              format('Training', epoch_loss, epoch_dsc_loss, epoch_dsc))
+
         elif self.args.network == 'Reg':
             epoch_ncc_loss = running_ncc_loss / epoch_samples
             epoch_smooth_loss = running_smooth_loss / epoch_samples
@@ -327,8 +418,26 @@ class stlAgent_2(BaseAgent):
         elif self.args.network == 'Dose':
             self.logger.info('{} totalLoss: {:.4f}'.format('Training', epoch_loss))
 
+
+        elif self.args.network == 'dense':
+            epoch_ncc_loss = running_ncc_loss / epoch_samples
+            epoch_smooth_loss = running_smooth_loss / epoch_samples
+            epoch_reg_dsc_loss = running_reg_dsc_loss / epoch_samples
+            epoch_seg_dsc_loss = running_seg_dsc_loss / epoch_samples
+            epoch_mse_loss = running_mse_loss / epoch_samples
+            self.summary_writer.add_scalars("Losses/ncc_loss", {'train': epoch_ncc_loss}, self.current_epoch)
+            self.summary_writer.add_scalars("DVF/bending_energy", {'train': epoch_smooth_loss}, self.current_epoch)
+            self.logger.info(
+                '{} totalLoss: {:.4f} segdscLoss: {:.4f} regdscLoss {:.4f} nccLoss: {:.4f} dvfLoss: {:.4f} mseLoss: {:.4f}'.
+                format('Training', epoch_loss, epoch_seg_dsc_loss, epoch_reg_dsc_loss, epoch_ncc_loss, epoch_smooth_loss, epoch_mse_loss))
+
         elif self.args.network == 'w-net':
-            self.logger.info('{} totalLoss: {:.4f}'.format('Training', epoch_loss))
+
+            epoch_seg_dsc_loss = running_seg_dsc_loss / epoch_samples
+            epoch_mse_loss = running_mse_loss / epoch_samples
+            self.logger.info(
+                '{} totalLoss: {:.4f} segdscLoss: {:.4f} mseLoss: {:.4f}'.
+                format('Training', epoch_loss, epoch_seg_dsc_loss, epoch_mse_loss))
 
     def validate(self):
 
@@ -341,6 +450,9 @@ class stlAgent_2(BaseAgent):
         running_dsc_loss = 0.
         running_dsc = 0.
         running_ncc = 0.
+        running_reg_dsc_loss = 0.
+        running_seg_dsc_loss = 0.
+        running_mse_loss = 0.
         epoch_samples = 0
 
         with torch.no_grad():
@@ -354,6 +466,9 @@ class stlAgent_2(BaseAgent):
                 # forward pass
                 if self.args.network == 'w-net':
                     res_1, res_2 = self.model(data_dict['fimage'], moving_segmentation=data_dict['mlabel'], moving_dose=data_dict['mdose'])
+                if self.args.network == 'dense':
+                    res = self.model(data_dict['fimage'], moving_image=data_dict['mimage'],
+                                     moving_segmentation=data_dict['mlabel'], moving_dose=data_dict['mdose'])
                 else:
                     if 'Sf' in self.args.input and len(self.args.input) == 1:
                         res = self.model(data_dict['flabel'])
@@ -449,18 +564,95 @@ class stlAgent_2(BaseAgent):
                                self.args.level_weights[1] * dsc_loss_mid + \
                                self.args.level_weights[2] * dsc_loss_low
 
-                    loss = dsc_loss
+                    mse_loss_high = self.mse_loss(data_dict['fdose_high'], res_2['logits_high'],
+                                                  data_dict['flabel_high'])
+                    mse_loss_mid = self.mse_loss(data_dict['fdose_mid'], res_2['logits_mid'], data_dict['flabel_mid'])
+                    mse_loss_low = self.mse_loss(data_dict['fdose_low'], res_2['logits_low'], data_dict['flabel_low'])
+                    # mse_loss_high = self.mse_loss(data_dict['fdose_high'], res['logits_high'])
+                    # mse_loss_mid  = self.mse_loss(data_dict['fdose_mid'] , res['logits_mid'])
+                    # mse_loss_low  = self.mse_loss(data_dict['fdose_low'] , res['logits_low'])
+
+                    mse_loss = self.args.level_weights[0] * mse_loss_high + \
+                               self.args.level_weights[1] * mse_loss_mid + \
+                               self.args.level_weights[2] * mse_loss_low
+
+                    loss = dsc_loss + 0.02 * mse_loss
+
+                    # loss = dsc_loss
+
+                elif self.args.network == 'dense':
+
+                    mimage_high_out = self.spatial_transform(data_dict['mimage_high'], res['dvf_high'])
+                    mimage_mid_out = self.spatial_transform(data_dict['mimage_mid'], res['dvf_mid'])
+                    mimage_low_out = self.spatial_transform(data_dict['mimage_low'], res['dvf_low'])
+
+                    mlabel_high_out = self.spatial_transform(data_dict['mlabel_high_hot'], res['dvf_high'],
+                                                             mode='nearest')
+                    mlabel_mid_out = self.spatial_transform(data_dict['mlabel_mid_hot'], res['dvf_mid'], mode='nearest')
+                    mlabel_low_out = self.spatial_transform(data_dict['mlabel_low_hot'], res['dvf_low'], mode='nearest')
+
+                    reg_dsc_loss_high, reg_dsc_list_high = self.dsc_loss(data_dict['flabel_high'], mlabel_high_out,
+                                                                         use_activation=False)
+                    reg_dsc_loss_mid, reg_dsc_list_mid = self.dsc_loss(data_dict['flabel_mid'], mlabel_mid_out,
+                                                                       use_activation=False)
+                    reg_dsc_loss_low, reg_dsc_list_low = self.dsc_loss(data_dict['flabel_low'], mlabel_low_out,
+                                                                       use_activation=False)
+
+                    ncc_loss_high = self.ncc_loss(data_dict['fimage_high'], mimage_high_out)
+                    ncc_loss_mid = self.ncc_loss(data_dict['fimage_mid'], mimage_mid_out)
+                    ncc_loss_low = self.ncc_loss(data_dict['fimage_low'], mimage_low_out)
+
+                    smooth_loss_high = self.smooth_loss(res['dvf_high'])
+                    smooth_loss_mid = self.smooth_loss(res['dvf_mid'])
+                    smooth_loss_low = self.smooth_loss(res['dvf_low'])
+
+                    reg_dsc_loss = self.args.level_weights[0] * reg_dsc_loss_high + \
+                                   self.args.level_weights[1] * reg_dsc_loss_mid + \
+                                   self.args.level_weights[2] * reg_dsc_loss_low
+
+                    ncc_loss = self.args.level_weights[0] * ncc_loss_high + \
+                               self.args.level_weights[1] * ncc_loss_mid + \
+                               self.args.level_weights[2] * ncc_loss_low
+
+                    smooth_loss = self.args.level_weights[0] * smooth_loss_high + \
+                                  self.args.level_weights[1] * smooth_loss_mid + \
+                                  self.args.level_weights[2] * smooth_loss_low
+
+                    reg_loss = ncc_loss + self.args.w_bending_energy * smooth_loss + reg_dsc_loss
+
+                    dsc_loss_high, dsc_list_high = self.dsc_loss(data_dict['flabel_high'], res['logits_high'])
+                    dsc_loss_mid, dsc_list_mid = self.dsc_loss(data_dict['flabel_mid'], res['logits_mid'])
+                    dsc_loss_low, dsc_list_low = self.dsc_loss(data_dict['flabel_low'], res['logits_low'])
+
+                    seg_loss = self.args.level_weights[0] * dsc_loss_high + \
+                               self.args.level_weights[1] * dsc_loss_mid + \
+                               self.args.level_weights[2] * dsc_loss_low
+
+                    mse_loss_high = self.mse_loss(data_dict['fdose_high'], res['dose_high'], data_dict['flabel_high'])
+                    mse_loss_mid = self.mse_loss(data_dict['fdose_mid'], res['dose_mid'], data_dict['flabel_mid'])
+                    mse_loss_low = self.mse_loss(data_dict['fdose_low'], res['dose_low'], data_dict['flabel_low'])
+
+                    mse_loss = self.args.level_weights[0] * mse_loss_high + \
+                               self.args.level_weights[1] * mse_loss_mid + \
+                               self.args.level_weights[2] * mse_loss_low
+
+                    loss = reg_loss + seg_loss + 0.02 * mse_loss
 
                 # statistics
                 epoch_samples += fimage.size(0)
                 running_loss += loss.item() * fimage.size(0)
                 if self.args.network == 'Reg' or self.args.network == 'Seg':
                     running_dsc_loss += dsc_loss.item() * fimage.size(0)
-                    running_dsc += (1.0 - dsc_loss.item()) * fimage.size(0)
-                if self.args.network == 'Reg':
+                if self.args.network == 'Reg' or self.args.network == 'dense':
                     running_ncc_loss += ncc_loss.item() * fimage.size(0)
-                    running_ncc += (1.0 - ncc_loss.item()) * fimage.size(0)
                     running_smooth_loss += smooth_loss.item() * fimage.size(0)
+                if self.args.network == 'dense':
+                    running_reg_dsc_loss += reg_dsc_loss.item() * fimage.size(0)
+                    running_seg_dsc_loss += seg_loss.item() * fimage.size(0)
+                    running_mse_loss += mse_loss.item() * fimage.size(0)
+                if self.args.network == 'w-net':
+                    running_dsc_loss += dsc_loss.item() * fimage.size(0)
+                    running_mse_loss += mse_loss.item() * fimage.size(0)
 
                 self.data_iteration = (self.current_iteration + 1) * nbatches * wsize
                 self.current_iteration += 1
@@ -494,8 +686,28 @@ class stlAgent_2(BaseAgent):
             elif self.args.network == 'Dose':
                 self.logger.info('{} total loss: {:.4f}'.format('Validation', epoch_loss))
 
+
+
+            elif self.args.network == 'dense':
+                epoch_ncc_loss = running_ncc_loss / epoch_samples
+                epoch_smooth_loss = running_smooth_loss / epoch_samples
+                epoch_reg_dsc_loss = running_reg_dsc_loss / epoch_samples
+                epoch_seg_dsc_loss = running_seg_dsc_loss / epoch_samples
+                epoch_mse_loss = running_mse_loss / epoch_samples
+                self.summary_writer.add_scalars("Losses/ncc_loss", {'train': epoch_ncc_loss}, self.current_epoch)
+                self.summary_writer.add_scalars("DVF/bending_energy", {'train': epoch_smooth_loss}, self.current_epoch)
+                self.logger.info(
+                    '{} totalLoss: {:.4f} segdscLoss: {:.4f} regdscLoss {:.4f} nccLoss: {:.4f} dvfLoss: {:.4f} mseLoss: {:.4f}'.
+                        format('Training', epoch_loss, epoch_seg_dsc_loss, epoch_reg_dsc_loss, epoch_ncc_loss,
+                               epoch_smooth_loss, epoch_mse_loss))
+
             elif self.args.network == 'w-net':
-                self.logger.info('{} total loss: {:.4f}'.format('Validation', epoch_loss))
+
+                epoch_seg_dsc_loss = running_seg_dsc_loss / epoch_samples
+                epoch_mse_loss = running_mse_loss / epoch_samples
+                self.logger.info(
+                    '{} totalLoss: {:.4f} segdscLoss: {:.4f} mseLoss: {:.4f}'.
+                        format('Training', epoch_loss, epoch_seg_dsc_loss, epoch_mse_loss))
 
     def inference(self):
 

@@ -6,9 +6,9 @@ from utils.generate_jobs import submit_job
 setting = dict()
 setting['cluster_manager'] = 'Slurm'
 setting['NumberOfGPU'] = 1
-setting['cluster_MemPerCPU'] = 9500
-setting['cluster_NumberOfCPU'] = 5             # Number of CPU per job
-setting['cluster_NodeList'] = 'res-hpc-lkeb06'  # ['res-hpc-gpu01','res-hpc-gpu02','res-hpc-lkeb03',---,'res-hpc-lkeb07']
+setting['cluster_MemPerCPU'] = 8500
+setting['cluster_NumberOfCPU'] = 6             # Number of CPU per job
+setting['cluster_NodeList'] = 'res-hpc-lkeb05'  # ['res-hpc-gpu01','res-hpc-gpu02','res-hpc-lkeb03',---,'res-hpc-lkeb07']
 
 
 if 'lkeb' in setting['cluster_NodeList']:
@@ -75,7 +75,7 @@ experiments_dict['doseprediction_l'] ={'model_name':'Dose_Deep', 'task':'Single-
 experiments_dict['doseprediction_m'] ={'model_name':'Dose_Deep_good', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
                                      'input':'Sf_If_Dm_Ma', 'task_ids': ['dose'], 'num_featurmaps': [16, 32, 64, 128], 'num_classes':4}
 
-experiments_dict['doseprediction_n'] ={'model_name':'Dose_Deep_weights', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
+experiments_dict['doseprediction_n'] ={'model_name':'Dose_Deep_weights_2', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
                                      'input':'Sf_If_Dm_Ma', 'task_ids': ['dose'], 'num_featurmaps': [32, 64, 128, 256], 'num_classes':4}
 
 experiments_dict['doseprediction_p'] ={'model_name':'Dose_Deep_no_weights', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
@@ -88,10 +88,16 @@ experiments_dict['cross-stitch_a']  ={'model_name':'CS', 'task':'Multi-Task', 'a
 experiments_dict['w-net_a']         ={'model_name':'w-net', 'task':'Single-Task', 'agent':'stlAgent_2', 'network':'w-net',
                                     'input':'Sm_If_Dm', 'task_ids': ['w-net'], 'num_featurmaps': None}
 
+experiments_dict['densenet_a']         ={'model_name':'densenet', 'task':'Single-Task', 'agent':'stlAgent_2', 'network':'dense',
+                                    'input':'Sm_If_Dm', 'task_ids': ['densenet'], 'num_featurmaps': [32, 64, 128, 256]}
+
+experiments_dict['doseprediction_q'] ={'model_name':'dense_dose', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
+                                     'input':'If_Im_Sm_Dm', 'task_ids': ['dose'], 'num_featurmaps': [32, 64, 128, 256]}
 
 
 
-exp = experiments_dict['w-net_a']
+
+exp = experiments_dict['doseprediction_q']
 exp['is_debug'] = False
 is_local = False
 exp['mode'] = 'train'            #['train', 'inference', 'eval']
