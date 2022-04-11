@@ -6,9 +6,9 @@ from utils.generate_jobs import submit_job
 setting = dict()
 setting['cluster_manager'] = 'Slurm'
 setting['NumberOfGPU'] = 1
-setting['cluster_MemPerCPU'] = 8500
-setting['cluster_NumberOfCPU'] = 6             # Number of CPU per job
-setting['cluster_NodeList'] = 'res-hpc-lkeb05'  # ['res-hpc-gpu01','res-hpc-gpu02','res-hpc-lkeb03',---,'res-hpc-lkeb07']
+setting['cluster_MemPerCPU'] = 7500
+setting['cluster_NumberOfCPU'] = 4             # Number of CPU per job
+setting['cluster_NodeList'] = 'res-hpc-lkeb04'  # ['res-hpc-gpu01','res-hpc-gpu02','res-hpc-lkeb03',---,'res-hpc-lkeb07']
 
 
 if 'lkeb' in setting['cluster_NodeList']:
@@ -94,10 +94,18 @@ experiments_dict['densenet_a']         ={'model_name':'densenet', 'task':'Single
 experiments_dict['doseprediction_q'] ={'model_name':'dense_dose', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
                                      'input':'If_Im_Sm_Dm', 'task_ids': ['dose'], 'num_featurmaps': [32, 64, 128, 256]}
 
+experiments_dict['cross-stitch_b']  ={'model_name':'CS', 'task':'Multi-Task', 'agent':'mtlAgent', 'network':'CS_2',
+                                    'weight':'equal', 'input_seg':'If_Sm', 'input_reg':'Dose', 'loss_seg':'DSC', 'loss_reg':'NCC_DSCWarp',
+                                    'input':'If_Im_Sm', "task_ids": ["seg", "reg", "seg_reg"], 'num_featurmaps': [23, 45, 91], 'num_classes':5}
+
+experiments_dict['doseprediction_r'] ={'model_name':'cs_dose', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
+                                     'input':'If_Im_Sm_Dm', 'task_ids': ['dose'], 'num_featurmaps': [23, 45, 91]}
+
+experiments_dict['w-net_b']         ={'model_name':'w-net_segdose', 'task':'Single-Task', 'agent':'stlAgent_2', 'network':'w-net',
+                                    'input':'Sm_If_Dm', 'task_ids': ['w-net'], 'num_featurmaps': None}
 
 
-
-exp = experiments_dict['doseprediction_q']
+exp = experiments_dict['registration_b']
 exp['is_debug'] = False
 is_local = False
 exp['mode'] = 'train'            #['train', 'inference', 'eval']

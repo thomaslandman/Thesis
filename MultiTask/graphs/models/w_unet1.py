@@ -124,4 +124,5 @@ class UpBlock(nn.Module):
         out = self.conv_block(out)
         # print('after conv')
         # print(out.shape)
+        # print(out.requires_grad)
         return out

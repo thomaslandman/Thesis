@@ -199,7 +199,7 @@ class stlAgent_2(BaseAgent):
             # forward pass
             if self.args.network == 'w-net':
                 res_1, res_2 = self.model(data_dict['fimage'], moving_segmentation=data_dict['mlabel'], moving_dose=data_dict['mdose'])
-            if self.args.network == 'dense':
+            elif self.args.network == 'dense':
                 res = self.model(data_dict['fimage'], moving_image=data_dict['mimage'], moving_segmentation=data_dict['mlabel'], moving_dose=data_dict['mdose'])
             else:
                 if 'Sf' in self.args.input and len(self.args.input) == 1:
@@ -356,9 +356,9 @@ class stlAgent_2(BaseAgent):
                            self.args.level_weights[1] * dsc_loss_mid + \
                            self.args.level_weights[2] * dsc_loss_low
 
-                mse_loss_high = self.mse_loss(data_dict['fdose_high'], res['dose_high'], data_dict['flabel_high'])
-                mse_loss_mid = self.mse_loss(data_dict['fdose_mid'], res['dose_mid'], data_dict['flabel_mid'])
-                mse_loss_low = self.mse_loss(data_dict['fdose_low'], res['dose_low'], data_dict['flabel_low'])
+                mse_loss_high = self.mse_loss(data_dict['fdose_high'], res['dvf_high'], data_dict['flabel_high'])
+                mse_loss_mid = self.mse_loss(data_dict['fdose_mid'], res['dvf_mid'], data_dict['flabel_mid'])
+                mse_loss_low = self.mse_loss(data_dict['fdose_low'], res['dvf_low'], data_dict['flabel_low'])
 
                 mse_loss = self.args.level_weights[0] * mse_loss_high + \
                            self.args.level_weights[1] * mse_loss_mid + \
@@ -433,11 +433,11 @@ class stlAgent_2(BaseAgent):
 
         elif self.args.network == 'w-net':
 
-            epoch_seg_dsc_loss = running_seg_dsc_loss / epoch_samples
+            epoch_dsc_loss = running_dsc_loss / epoch_samples
             epoch_mse_loss = running_mse_loss / epoch_samples
             self.logger.info(
                 '{} totalLoss: {:.4f} segdscLoss: {:.4f} mseLoss: {:.4f}'.
-                format('Training', epoch_loss, epoch_seg_dsc_loss, epoch_mse_loss))
+                format('Training', epoch_loss, epoch_dsc_loss, epoch_mse_loss))
 
     def validate(self):
 
@@ -466,7 +466,7 @@ class stlAgent_2(BaseAgent):
                 # forward pass
                 if self.args.network == 'w-net':
                     res_1, res_2 = self.model(data_dict['fimage'], moving_segmentation=data_dict['mlabel'], moving_dose=data_dict['mdose'])
-                if self.args.network == 'dense':
+                elif self.args.network == 'dense':
                     res = self.model(data_dict['fimage'], moving_image=data_dict['mimage'],
                                      moving_segmentation=data_dict['mlabel'], moving_dose=data_dict['mdose'])
                 else:
@@ -628,9 +628,9 @@ class stlAgent_2(BaseAgent):
                                self.args.level_weights[1] * dsc_loss_mid + \
                                self.args.level_weights[2] * dsc_loss_low
 
-                    mse_loss_high = self.mse_loss(data_dict['fdose_high'], res['dose_high'], data_dict['flabel_high'])
-                    mse_loss_mid = self.mse_loss(data_dict['fdose_mid'], res['dose_mid'], data_dict['flabel_mid'])
-                    mse_loss_low = self.mse_loss(data_dict['fdose_low'], res['dose_low'], data_dict['flabel_low'])
+                    mse_loss_high = self.mse_loss(data_dict['fdose_high'], res['dvf_high'], data_dict['flabel_high'])
+                    mse_loss_mid = self.mse_loss(data_dict['fdose_mid'], res['dvf_mid'], data_dict['flabel_mid'])
+                    mse_loss_low = self.mse_loss(data_dict['fdose_low'], res['dvf_low'], data_dict['flabel_low'])
 
                     mse_loss = self.args.level_weights[0] * mse_loss_high + \
                                self.args.level_weights[1] * mse_loss_mid + \
@@ -698,21 +698,22 @@ class stlAgent_2(BaseAgent):
                 self.summary_writer.add_scalars("DVF/bending_energy", {'train': epoch_smooth_loss}, self.current_epoch)
                 self.logger.info(
                     '{} totalLoss: {:.4f} segdscLoss: {:.4f} regdscLoss {:.4f} nccLoss: {:.4f} dvfLoss: {:.4f} mseLoss: {:.4f}'.
-                        format('Training', epoch_loss, epoch_seg_dsc_loss, epoch_reg_dsc_loss, epoch_ncc_loss,
+                        format('Validation', epoch_loss, epoch_seg_dsc_loss, epoch_reg_dsc_loss, epoch_ncc_loss,
                                epoch_smooth_loss, epoch_mse_loss))
 
             elif self.args.network == 'w-net':
 
-                epoch_seg_dsc_loss = running_seg_dsc_loss / epoch_samples
+                epoch_dsc_loss = running_dsc_loss / epoch_samples
                 epoch_mse_loss = running_mse_loss / epoch_samples
                 self.logger.info(
                     '{} totalLoss: {:.4f} segdscLoss: {:.4f} mseLoss: {:.4f}'.
-                        format('Training', epoch_loss, epoch_seg_dsc_loss, epoch_mse_loss))
+                        format('Validation', epoch_loss, epoch_dsc_loss, epoch_mse_loss))
 
     def inference(self):
 
         for partition in self.args.split_set:
             if partition == 'validation':
+
                 dataset = 'HMC'
 
             elif partition == 'inference':
@@ -727,6 +728,8 @@ class stlAgent_2(BaseAgent):
             padding = [[0, 0]] + [[diff // 2, diff - diff // 2] for diff in out_diff] + [[0, 0]]
             self.model.to(self.args.device)
             self.model.eval()
+
+
 
             for i in range(len(inference_cases)):
 
@@ -767,6 +770,10 @@ class stlAgent_2(BaseAgent):
                 mdose_padded = np.pad(mdose, padding, mode='constant', constant_values=mlabel.min())
                 f_bshape = fimage_padded.shape[1:-1]  # 162x552x552
                 striding = (list(np.maximum(1, np.array(op_shape) // 2)) if all(out_diff == 0) else op_shape)
+
+                if False:
+                    striding = (list(np.maximum(1, np.array(op_shape) // 2)) if all(out_diff == 0) else op_shape // 2)
+
                 out_fimage_dummies = np.zeros(inp_shape)  # 1x1x122x512x512
                 out_label_dummies = np.zeros(inp_shape)  # 1x1x122x512x512
                 out_dose_dummies = np.zeros(inp_shape)  # 1x1x122x512x512
@@ -807,26 +814,34 @@ class stlAgent_2(BaseAgent):
 
                     with torch.no_grad():
                         # forward pass
-                        if 'Sf' in self.args.input and len(self.args.input) == 1:
-                            res = self.model(flabel_window)
-                        elif 'Sf' in self.args.input and len(self.args.input) == 2:
-                            res = self.model(flabel_window, fimage_window)
-                        elif 'Dm' in self.args.input and len(self.args.input) == 1:
-                            res = self.model(mdose_window)
-                        elif 'Dm' in self.args.input and len(self.args.input) == 3:
-                            res = self.model(flabel_window, fimage_window, mdose_window)
-                        elif 'Dm' in self.args.input and len(self.args.input) == 4:
-                            res = self.model(flabel_window, fimage_window, mdose_window, ftorso_window)
-                        elif len(self.args.input) == 1:
-                            res = self.model(fimage_window)
-                        elif len(self.args.input) == 2 and 'Im' in self.args.input:
-                            res = self.model(fimage_window, mimage_window)
-                        elif len(self.args.input) == 2 and 'Sm' in self.args.input:
-                            res = self.model(fimage_window, moving_label=mlabel_window)
-                        elif len(self.args.input) == 3:
-                            res = self.model(fimage_window, mimage_window, mlabel_window)
+                        if self.args.network == 'w-net':
+                            res_1, res_2 = self.model(fimage_window, moving_segmentation=mlabel_window,
+                                                      moving_dose=mdose_window)
+                        elif self.args.network == 'dense':
+                            res = self.model(fimage_window, moving_image=mimage_window,
+                                             moving_segmentation=mlabel_window, moving_dose=mdose_window)
                         else:
-                            self.logger.error(self.args.input, "wrong input")
+                            if 'Sf' in self.args.input and len(self.args.input) == 1:
+                                res = self.model(flabel_window)
+                            elif 'Sf' in self.args.input and len(self.args.input) == 2:
+                                res = self.model(flabel_window, fimage_window)
+                            elif 'Dm' in self.args.input and len(self.args.input) == 1:
+                                res = self.model(moving_dose=mdose_window)
+                            elif 'Dm' in self.args.input and len(self.args.input) == 3:
+                                res = self.model(flabel_window, fimage_window, mdose_window)
+                            elif 'Dm' in self.args.input and len(self.args.input) == 4:
+                                res = self.model(flabel_window, fimage_window, mdose_window,
+                                                 ftorso_window)
+                            elif len(self.args.input) == 1:
+                                res = self.model(fimage_window)
+                            elif len(self.args.input) == 2 and 'Im' in self.args.input:
+                                res = self.model(fimage_window, moving_image=mimage_window)
+                            elif len(self.args.input) == 2 and 'Sm' in self.args.input:
+                                res = self.model(fimage_window, moving_label=mlabel_window)
+                            elif len(self.args.input) == 3:
+                                res = self.model(fimage_window, mimage_window, mlabel_window)
+                            else:
+                                self.logger.error(self.args.input_segmentation, "wrong input")
 
                     if self.args.network == 'Seg':
                         probs = F.softmax(res['logits_high'], dim=1)
@@ -849,6 +864,22 @@ class stlAgent_2(BaseAgent):
 
                     elif self.args.network == 'Dose':
                         dose = F.relu(res['logits_high'])
+                        out_dose_dummies[tuple(out_slicer)] = np.transpose(dose.cpu().numpy(),
+                                                                           (0, 2, 3, 4, 1))  # BxDxWxHxC
+                        if False:
+                            out_dose_dummies[tuple(out_slicer)] += np.transpose(dose.cpu().numpy(),
+                                                                               (0, 2, 3, 4, 1))/4  # BxDxWxHxC
+
+
+                    elif self.args.network == 'w-net':
+                        dose = F.relu(res_2['logits_high'])
+                        out_dose_dummies[tuple(out_slicer)] = np.transpose(dose.cpu().numpy(),
+                                                                           (0, 2, 3, 4, 1))  # BxDxWxHxC
+
+
+
+                    elif self.args.network == 'dense':
+                        dose = F.relu(res['dose_high'])
                         out_dose_dummies[tuple(out_slicer)] = np.transpose(dose.cpu().numpy(),
                                                                            (0, 2, 3, 4, 1))  # BxDxWxHxC
 
@@ -904,11 +935,35 @@ class stlAgent_2(BaseAgent):
 
                     sitk.WriteImage(fdose_itk, os.path.join(save_dir, 'Dose.mha'))
 
+                if self.args.network == 'w-net':
+                    fdose_itk = sitk.GetImageFromArray(np.squeeze(out_dose_dummies.astype(np.float32)))
+                    fdose_itk.SetOrigin(im_itk.GetOrigin())
+                    # flabel_itk.SetSpacing([1., 1., 1.])
+                    fdose_itk.SetSpacing(im_itk.GetSpacing())
+                    fdose_itk.SetDirection(im_itk.GetDirection())
+
+                    sitk.WriteImage(fdose_itk, os.path.join(save_dir, 'Dose.mha'))
+
+                if self.args.network == 'dense':
+                    fdose_itk = sitk.GetImageFromArray(np.squeeze(out_dose_dummies.astype(np.float32)))
+                    fdose_itk.SetOrigin(im_itk.GetOrigin())
+                    # flabel_itk.SetSpacing([1., 1., 1.])
+                    fdose_itk.SetSpacing(im_itk.GetSpacing())
+                    fdose_itk.SetDirection(im_itk.GetDirection())
+
+                    sitk.WriteImage(fdose_itk, os.path.join(save_dir, 'Dose.mha'))
+
     def eval(self):
         if self.args.network == 'Seg' or self.args.network == 'Reg':
             evaluation_seg(self.args, self.data_config)
 
         if self.args.network == 'Dose':
+            evaluation_dose(self.args, self.data_config)
+
+        if self.args.network == 'dense':
+            evaluation_dose(self.args, self.data_config)
+
+        if self.args.network == 'w-net':
             evaluation_dose(self.args, self.data_config)
 
     def finalize(self):

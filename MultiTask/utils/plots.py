@@ -36,8 +36,8 @@ def loss_plot():
 
 
 def DVH_plot():
-    scan = 'Patient_24/visit_20071102'
-    exp_name = 'Dose_Masks_input_Sf_If_Dm_Ma'
+    scan = 'Patient_21/visit_20071204'
+    exp_name = 'dense_dose_input_If_Im_Sm_Dm'
 
     cont = read_mha(os.path.join('/exports/lkeb-hpc/tlandman/Data/Patient_MHA', scan, 'Segmentation.mha'))
     dose = read_mha(os.path.join('/exports/lkeb-hpc/tlandman/Data/Patient_MHA', scan, 'Dose.mha'))
@@ -184,15 +184,15 @@ def show_gamma(fig, ax, CT, gamma, cont=None, slice=50, title=None):
 
 
 def planning_daily_dose():
-    scan = 'Patient_21/visit_20071116'
-    exp_name = 'Dose_Deep_good_input_Sf_If_Dm_Ma'
-    slice = 60
-    overlay = True
-    plot_gamma = True
+    scan = 'Patient_24/visit_20071213'
+    exp_name = 'CS_inSeg_If_Sm_inReg_Dose_lSeg_DSC_lReg_NCC_DSCWarp_equal'
+    slice = 50
+    overlay = False
+    plot_gamma = False
     daily_CT = read_mha(os.path.join('/exports/lkeb-hpc/tlandman/Data/Patient_MHA', scan, 'CTImage.mha'))
     daily_cont = read_mha(os.path.join('/exports/lkeb-hpc/tlandman/Data/Patient_MHA', scan, 'Segmentation.mha'))
     daily_dose = read_mha(os.path.join('/exports/lkeb-hpc/tlandman/Data/Patient_MHA', scan, 'Dose.mha'))
-    predicted_dose = read_mha(os.path.join('/exports/lkeb-hpc/tlandman/Thesis/MultiTask/experiments/Single-Task', exp_name, 'output/HMC', scan, 'Dose.mha'))
+    predicted_dose = read_mha(os.path.join('/exports/lkeb-hpc/tlandman/Thesis/MultiTask/experiments/Multi-Task', exp_name, 'output/EMC', scan, 'Dose.mha'))
 
     fig, axs = plt.subplots(2 ,2)
     # fig.suptitle('Comparing the daily scan with the registered planning scan')
@@ -213,8 +213,8 @@ def planning_daily_dose():
     plt.show()
 
 # planning_daily_dose()
-# DVH_plot()
-scan = 'Patient_04/visit_20070622'
-daily_cont = read_mha(os.path.join('/exports/lkeb-hpc/tlandman/Data/Patient_MHA', scan, 'Segmentation.mha'))
-plt.imshow(daily_cont[70,:,:])
-plt.show()
+DVH_plot()
+# scan = 'Patient_04/visit_20070622'
+# daily_cont = read_mha(os.path.join('/exports/lkeb-hpc/tlandman/Data/Patient_MHA', scan, 'Segmentation.mha'))
+# plt.imshow(daily_cont[70,:,:])
+# plt.show()

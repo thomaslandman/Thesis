@@ -247,7 +247,7 @@ class stlAgent(BaseAgent):
                            self.args.level_weights[1] * smooth_loss_mid + \
                            self.args.level_weights[2] * smooth_loss_low
 
-                loss = ncc_loss + self.args.w_bending_energy * smooth_loss
+                loss = dsc_loss + ncc_loss + self.args.w_bending_energy * smooth_loss
 
             elif self.args.network == 'Dose':
                 mse_loss_high = self.mse_loss(data_dict['fdose_high'], res['logits_high'], data_dict['flabel_high'])
@@ -292,7 +292,7 @@ class stlAgent(BaseAgent):
         self.summary_writer.add_scalar('number_processed_windows', self.data_iteration, self.current_epoch)
 
         if self.args.network == 'Seg':
-            self.logger.info('{} totalLoss: {:.4f} dscLoss: {:.4f} dsc: {:.4f}'.
+            self.logger.info('{} totalLoss:   {:.4f} dscLoss: {:.4f} dsc: {:.4f}'.
                              format('Training', epoch_loss, epoch_dsc_loss, epoch_dsc))
         elif self.args.network == 'Reg':
             epoch_ncc_loss = running_ncc_loss / epoch_samples
@@ -301,10 +301,10 @@ class stlAgent(BaseAgent):
             self.summary_writer.add_scalars("Losses/ncc_loss", {'train': epoch_ncc_loss}, self.current_epoch)
             self.summary_writer.add_scalars("Metrics/ncc", {'train': epoch_ncc}, self.current_epoch)
             self.summary_writer.add_scalars("DVF/bending_energy", {'train': epoch_smooth_loss}, self.current_epoch)
-            self.logger.info('{} totalLoss: {:.4f} dscLoss: {:.4f} nccLoss: {:.4f} dvfLoss: {:.4f} dsc: {:.4f} ncc: {:.4f}'.
-                format('Training', epoch_loss, epoch_dsc_loss, epoch_ncc_loss, epoch_smooth_loss, epoch_dsc, epoch_ncc))
+            self.logger.info('{} totalLoss:   {:.4f} dscLoss: {:.4f} nccLoss: {:.4f} dvfLoss: {:.4f}'.
+                format('Training', epoch_loss, epoch_dsc_loss, epoch_ncc_loss, epoch_smooth_loss))
         elif self.args.network == 'Dose':
-            self.logger.info('{} totalLoss: {:.4f}'.format('Training', epoch_loss))
+            self.logger.info('{} totalLoss:   {:.4f}'.format('Training', epoch_loss))
 
 
 
@@ -402,7 +402,7 @@ class stlAgent(BaseAgent):
                                   self.args.level_weights[1] * smooth_loss_mid + \
                                   self.args.level_weights[2] * smooth_loss_low
 
-                    loss = ncc_loss + self.args.w_bending_energy * smooth_loss
+                    loss = dsc_loss + ncc_loss + self.args.w_bending_energy * smooth_loss
 
                 elif self.args.network == 'Dose':
                     mse_loss_high = self.mse_loss(data_dict['fdose_high'], res['logits_high'], data_dict['flabel_high'])
@@ -441,7 +441,7 @@ class stlAgent(BaseAgent):
 
             if self.args.network == 'Seg':
                 self.logger.info('{} totalLoss: {:.4f} dscLoss: {:.4f} dsc: {:.4f}'.
-                                 format('validation', epoch_loss, epoch_dsc_loss, epoch_dsc))
+                                 format('Validation', epoch_loss, epoch_dsc_loss, epoch_dsc))
             elif self.args.network == 'Reg':
                 epoch_ncc_loss = running_ncc_loss / epoch_samples
                 epoch_smooth_loss = running_smooth_loss / epoch_samples
@@ -450,11 +450,11 @@ class stlAgent(BaseAgent):
                 self.summary_writer.add_scalars("Metrics/ncc", {'train': epoch_ncc}, self.current_epoch)
                 self.summary_writer.add_scalars("DVF/bending_energy", {'train': epoch_smooth_loss}, self.current_epoch)
 
-                self.logger.info('{} totalLoss: {:.4f} dscLoss: {:.4f} nccLoss: {:.4f} dvfLoss: {:.4f} dsc: {:.4f} ncc: {:.4f}'.
-                    format('validation', epoch_loss, epoch_dsc_loss, epoch_ncc_loss, epoch_smooth_loss, epoch_dsc, epoch_ncc))
+                self.logger.info('{} totalLoss: {:.4f} dscLoss: {:.4f} nccLoss: {:.4f} dvfLoss: {:.4f}'.
+                    format('Validation', epoch_loss, epoch_dsc_loss, epoch_ncc_loss, epoch_smooth_loss))
 
             elif self.args.network == 'Dose':
-                self.logger.info('{} totalLoss: {:.4f}'.format('validation', epoch_loss))
+                self.logger.info('{} totalLoss: {:.4f}'.format('Validation', epoch_loss))
 
     def inference(self):
 

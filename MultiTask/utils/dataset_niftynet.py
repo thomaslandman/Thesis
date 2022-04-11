@@ -90,7 +90,6 @@ def set_dataParam(args, config):
                                                            spatial_window_size=args.patch_size,
                                                            pixdim=args.voxel_dim, interp_order=3)
 
-
     if 'moving_image' in args.input_list:
         data_param['moving_image'] = ParserNamespace(csv_file=config.csv_moving_image,
                                                      spatial_window_size=args.patch_size,
@@ -161,7 +160,7 @@ def get_sampler(args, image_reader, phase):
         for i in range(len(args.input_list)):
             window_sizes[args.input_list[i]] = args.patch_size
 
-        sampler = bs(image_reader, window_sizes=args.patch_size, queue_length = 8, windows_per_image=args.windows_per_volume)
+        sampler = bs(image_reader, window_sizes=args.patch_size, queue_length = 6, windows_per_image=args.windows_per_volume)
 
     elif phase == 'inference':
         sampler = GridSampler(image_reader,

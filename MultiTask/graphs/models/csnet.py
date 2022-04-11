@@ -21,7 +21,7 @@ class CSNet(nn.Module):
     def __init__(self, in_channels, dim, classes= 5, depth=3, initial_channels=64, channels_list = None):
 
         super().__init__()
-        assert dim in (2, 3)
+        # assert dim in (2, 3)
         self.dim = dim
         print(dim)
         self.num_Classes = classes
@@ -33,7 +33,7 @@ class CSNet(nn.Module):
         self.spatial_transform = SpatialTransformer(self.dim)
 
 
-    def forward(self, fixed_image, moving_image, moving_label=None):
+    def forward(self, fixed_image, moving_image=None, moving_segmentation=None, moving_dose=None):
         '''
         Parameters
         ----------
@@ -49,9 +49,16 @@ class CSNet(nn.Module):
             Flow field from fixed image to moving image.
         '''
 
-        input_image = torch.cat((fixed_image, moving_image), dim=1)  # (n, 2, d, h, w)
-        if moving_label is not None:
-            input_image = torch.cat((input_image, moving_label), dim=1)  # (n, 3, d, h, w)
+        input_image = fixed_image
+
+        if moving_image is not None:
+            input_image = torch.cat((input_image, moving_image), dim=1)  # (n, 3, d, h, w)
+
+        if moving_segmentation is not None:
+            input_image = torch.cat((input_image, moving_segmentation), dim=1)  # (n, 3, d, h, w)
+
+        if moving_dose is not None:
+            input_image = torch.cat((input_image, moving_dose), dim=1)  # (n, 3, d, h, w)
 
         logits_list, disp_list = self.unet(input_image)  # (n, 6, d, h, w), (n, 3, d, h, w)
 

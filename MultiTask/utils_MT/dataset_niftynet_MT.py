@@ -13,14 +13,16 @@ from niftynet.io.image_reader import ImageReader
 from niftynet.engine.signal import TRAIN, VALID, INFER
 from niftynet.engine.sampler_grid_v2 import GridSampler
 from niftynet.io.image_sets_partitioner import ImageSetsPartitioner
-from utils_MT.balanced_sampler_MT import BalancedSampler as bs
+from utils.balanced_sampler import BalancedSampler as bs
 from utils.pad import PadLayer
+
 
 class DatasetNiftySampler(Dataset):
     """
     A simple adapter
     converting NiftyNet sampler's output into PyTorch Dataset properties
     """
+
     def __init__(self, sampler):
         super(DatasetNiftySampler, self).__init__()
         self.sampler = sampler
@@ -31,17 +33,23 @@ class DatasetNiftySampler(Dataset):
         # Transpose to PyTorch format
         fimage = np.transpose(data['fixed_image'], (0, 5, 1, 2, 3, 4))
         flabel = np.transpose(data['fixed_segmentation'], (0, 5, 1, 2, 3, 4))
+        fdose = np.transpose(data['fixed_dose'], (0, 5, 1, 2, 3, 4))
+        ftorso = np.transpose(data['fixed_torso'], (0, 5, 1, 2, 3, 4))
         mimage = np.transpose(data['moving_image'], (0, 5, 1, 2, 3, 4))
         mlabel = np.transpose(data['moving_segmentation'], (0, 5, 1, 2, 3, 4))
+        mdose = np.transpose(data['moving_dose'], (0, 5, 1, 2, 3, 4))
         fimage = torch.from_numpy(fimage).float()
         flabel = torch.from_numpy(flabel).float()
+        fdose = torch.from_numpy(fdose).float()
         mimage = torch.from_numpy(mimage).float()
         mlabel = torch.from_numpy(mlabel).float()
+        mdose = torch.from_numpy(mdose).float()
 
-        return fimage, flabel, mimage, mlabel
+        return fimage, flabel, fdose, ftorso, mimage, mlabel, mdose
 
     def __len__(self):
         return len(self.sampler.reader.output_list)
+
 
 def set_dataParam(args, config):
     # Defining the data parameters
@@ -58,25 +66,32 @@ def set_dataParam(args, config):
                                                            pixdim=args.voxel_dim, interp_order=0)
     if 'fixed_bladder' in args.input_list:
         data_param['fixed_bladder'] = ParserNamespace(csv_file=config.csv_fixed_segmentation_bladder,
-                                                           spatial_window_size=args.patch_size,
-                                                           pixdim=args.voxel_dim, interp_order=0)
+                                                      spatial_window_size=args.patch_size,
+                                                      pixdim=args.voxel_dim, interp_order=0)
     if 'fixed_rectum' in args.input_list:
         data_param['fixed_rectum'] = ParserNamespace(csv_file=config.csv_fixed_segmentation_rectum,
-                                                           spatial_window_size=args.patch_size,
-                                                           pixdim=args.voxel_dim, interp_order=0)
+                                                     spatial_window_size=args.patch_size,
+                                                     pixdim=args.voxel_dim, interp_order=0)
     if 'fixed_sv' in args.input_list:
         data_param['fixed_sv'] = ParserNamespace(csv_file=config.csv_fixed_segmentation_sv,
-                                                           spatial_window_size=args.patch_size,
-                                                           pixdim=args.voxel_dim, interp_order=0)
+                                                 spatial_window_size=args.patch_size,
+                                                 pixdim=args.voxel_dim, interp_order=0)
     if 'fixed_ln' in args.input_list:
         data_param['fixed_ln'] = ParserNamespace(csv_file=config.csv_fixed_segmentation_ln,
-                                                           spatial_window_size=args.patch_size,
-                                                           pixdim=args.voxel_dim, interp_order=0)
+                                                 spatial_window_size=args.patch_size,
+                                                 pixdim=args.voxel_dim, interp_order=0)
     if 'fixed_gtv' in args.input_list:
         data_param['fixed_gtv'] = ParserNamespace(csv_file=config.csv_fixed_segmentation_gtv,
-                                                           spatial_window_size=args.patch_size,
-                                                           pixdim=args.voxel_dim, interp_order=0)
-
+                                                  spatial_window_size=args.patch_size,
+                                                  pixdim=args.voxel_dim, interp_order=0)
+    if 'fixed_torso' in args.input_list:
+        data_param['fixed_torso'] = ParserNamespace(csv_file=config.csv_fixed_torso,
+                                                    spatial_window_size=args.patch_size,
+                                                    pixdim=args.voxel_dim, interp_order=0)
+    if 'fixed_dose' in args.input_list:
+        data_param['fixed_dose'] = ParserNamespace(csv_file=config.csv_fixed_dose,
+                                                   spatial_window_size=args.patch_size,
+                                                   pixdim=args.voxel_dim, interp_order=3)
 
     if 'moving_image' in args.input_list:
         data_param['moving_image'] = ParserNamespace(csv_file=config.csv_moving_image,
@@ -88,32 +103,34 @@ def set_dataParam(args, config):
                                                             pixdim=args.voxel_dim, interp_order=0)
     if 'moving_bladder' in args.input_list:
         data_param['moving_bladder'] = ParserNamespace(csv_file=config.csv_moving_segmentation_bladder,
-                                                            spatial_window_size=args.patch_size,
-                                                            pixdim=args.voxel_dim, interp_order=0)
+                                                       spatial_window_size=args.patch_size,
+                                                       pixdim=args.voxel_dim, interp_order=0)
     if 'moving_rectum' in args.input_list:
         data_param['moving_segmentation'] = ParserNamespace(csv_file=config.csv_moving_segmentation_rectum,
                                                             spatial_window_size=args.patch_size,
                                                             pixdim=args.voxel_dim, interp_order=0)
     if 'moving_sv' in args.input_list:
         data_param['moving_sv'] = ParserNamespace(csv_file=config.csv_moving_segmentation_sv,
-                                                            spatial_window_size=args.patch_size,
-                                                            pixdim=args.voxel_dim, interp_order=0)
+                                                  spatial_window_size=args.patch_size,
+                                                  pixdim=args.voxel_dim, interp_order=0)
     if 'moving_ln' in args.input_list:
         data_param['moving_ln'] = ParserNamespace(csv_file=config.csv_moving_segmentation_ln,
-                                                            spatial_window_size=args.patch_size,
-                                                            pixdim=args.voxel_dim, interp_order=0)
+                                                  spatial_window_size=args.patch_size,
+                                                  pixdim=args.voxel_dim, interp_order=0)
     if 'moving_gtv' in args.input_list:
         data_param['moving_gtv'] = ParserNamespace(csv_file=config.csv_moving_segmentation_gtv,
-                                                            spatial_window_size=args.patch_size,
-                                                            pixdim=args.voxel_dim, interp_order=0)
-
+                                                   spatial_window_size=args.patch_size,
+                                                   pixdim=args.voxel_dim, interp_order=0)
+    if 'moving_dose' in args.input_list:
+        data_param['moving_dose'] = ParserNamespace(csv_file=config.csv_moving_dose,
+                                                    spatial_window_size=args.patch_size,
+                                                    pixdim=args.voxel_dim, interp_order=3)
 
     if 'sampler' in args.input_list:
         data_param['sampler'] = ParserNamespace(csv_file=config.csv_sampler,
                                                 spatial_window_size=args.patch_size,
                                                 pixdim=args.voxel_dim,
                                                 interp_order=0)
-
 
     return data_param
 
@@ -136,14 +153,15 @@ def get_reader(args, data_param, image_sets_partitioner, phase):
 
     return image_reader
 
-def get_sampler(args, image_reader, phase):
 
+def get_sampler(args, image_reader, phase):
     if phase in ('training', 'validation'):
         window_sizes = {}
         for i in range(len(args.input_list)):
             window_sizes[args.input_list[i]] = args.patch_size
 
-        sampler = bs(image_reader, window_sizes=args.patch_size, queue_length =40, windows_per_image=args.windows_per_volume)
+        sampler = bs(image_reader, window_sizes=args.patch_size, queue_length=6,
+                     windows_per_image=args.windows_per_volume)
 
     elif phase == 'inference':
         sampler = GridSampler(image_reader,
@@ -156,13 +174,14 @@ def get_sampler(args, image_reader, phase):
 
     return sampler
 
+
 def get_datasets(args, config):
     # Dictionary with data parameters for NiftyNet Reader
     data_param = set_dataParam(args, config)
+    # print(data_param)
     image_sets_partitioner = ImageSetsPartitioner().initialise(data_param=data_param,
                                                                data_split_file=config.csv_split_file,
                                                                new_partition=False)
-
 
     readers = {x: get_reader(args, data_param, image_sets_partitioner, x)
                for x in args.split_set}
@@ -173,3 +192,5 @@ def get_datasets(args, config):
              for x in args.split_set}
 
     return dsets
+
+

@@ -36,7 +36,7 @@ class UNet(nn.Module):
     def __init__(self, in_channels, out_channels_seg, dim=3, depth=3, initial_channels=32, channels_list= None):
 
         super().__init__()
-        assert dim in (2, 3)
+        # assert dim in (2, 3)
         self.dim = dim
         self.depth = depth
         # print(in_channels)
@@ -210,3 +210,4 @@ class UNet(nn.Module):
 #         out = torch.cat([x_up_conv, skip], 1)
 #         out = self.conv_block(out)
 #         return out
+

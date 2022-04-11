@@ -64,8 +64,8 @@ class UNet(nn.Module):
 
             if i == 0:
                 # if self.args.depth == 4:
-                x = F.interpolate(x, scale_factor=2.0, mode='trilinear', align_corners=True)
-                # out.append(res(x))
+                # x = F.interpolate(x, scale_factor=2.0, mode='trilinear', align_corners=True)
+                out.append(res(x))
                 x = up(x, blocks[-i - 1])
             else:
                 out.append(res(x))
