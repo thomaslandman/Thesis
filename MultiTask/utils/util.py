@@ -69,6 +69,10 @@ def clean_data(fimage, flabel, fdose, ftorso, mimage, mlabel, mdose, args):
     mimage[mimage < -1000] = -1000
     mimage = mimage / 1000
 
+    fdose = fdose / 100
+
+    mdose = mdose / 100
+
     # resize the images for different resolutions
     fimage = fimage.to(args.device)  # size B*C*D*W,H
     flabel = flabel.to(args.device).float()

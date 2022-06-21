@@ -134,10 +134,10 @@ class evaluation_dose(object):
 
                 df = pd.DataFrame(data, dtype=float)
 
-                df = df.reindex(['Patient', 'Scan', 'gamma_2_2', 'gamma_2_2_gtv', 'gamma_2_2_sv', 'gamma_2_2_rectum', 'gamma_2_2_bladder',
+                df = df.reindex(columns=['Patient', 'Scan', 'gamma_2_2', 'gamma_2_2_gtv', 'gamma_2_2_sv', 'gamma_2_2_rectum', 'gamma_2_2_bladder',
                                  'gamma_3_3', 'gamma_3_3_gtv', 'gamma_3_3_sv', 'gamma_3_3_rectum', 'gamma_3_3_bladder',
                                  'V95_gtv', 'V110_gtv', 'Dmean_gtv', 'D95_gtv', 'V95_sv', 'V110_sv', 'Dmean_sv', 'D95_sv',
-                                 'Dmean_rectum', 'D2_rectum', 'V45_rectum', 'Dmean_bladder', 'D2_bladder', 'V45_bladder'], axis=1)
+                                 'Dmean_rectum', 'D2_rectum', 'V45_rectum', 'Dmean_bladder', 'D2_bladder', 'V45_bladder'])
 
                 df.loc['Median'] = df.median()
                 df.loc['Min'] = df.min()

@@ -1,8 +1,9 @@
 import torch
 import torch.nn.functional as F
 from torch import nn
+import itertools
 
-from .unet import ConvBlock, UpBlock
+from .unet_deep import ConvBlock, UpBlock
 
 
 # torch.backends.cudnn.deterministic = True
@@ -21,7 +22,7 @@ class UNet(nn.Module):
     ----------
     in_channels : int
         number of input channels.
-    out_channels_seg : int
+    out_channels_a : int
         number of output channels.
     dim : (2 or 3), optional
         The dimention of input data. The default is 2.
@@ -33,53 +34,94 @@ class UNet(nn.Module):
         List of number of channels at every depth in case of customized number of channels.
     '''
 
-    def __init__(self, in_channels, out_channels_seg, dim=3, depth=3, initial_channels=32, channels_list= None):
+    def __init__(self, channels_in_a, channels_out_a, depth_a, channels_in_b, channels_out_b, depth_b, initial_channels=16, channels_list = None):
 
         super().__init__()
-        # assert dim in (2, 3)
-        self.dim = dim
-        self.depth = depth
-        # print(in_channels)
-        # print(out_channels_seg)
-        # print(dim)
-        # print(depth)
-        prev_channels = in_channels
-        self.down_path_seg = nn.ModuleList()
-        self.down_path_reg = nn.ModuleList()
+
+
+        prev_channels_a = channels_in_a
+        prev_channels_b = channels_in_b
+        self.depth_a = depth_a
+        self.depth_b = depth_b
+        self.down_path_a = nn.ModuleList()
+        self.down_path_b = nn.ModuleList()
         self.cs_unit_encoder = []
         self.cs_unit_decoder = []
-        self.res_list_seg = nn.ModuleList()
-        self.res_list_reg = nn.ModuleList()
+        self.res_list_a = nn.ModuleList()
+        self.res_list_b = nn.ModuleList()
 
-        for i in range(self.depth):
+        for i in range(depth_a):
             if channels_list == None:
                 current_channels = 2 ** i * initial_channels
             else:
                 current_channels = channels_list[i]
 
-            self.down_path_seg.append(ConvBlock(prev_channels, current_channels))
-            self.down_path_reg.append(ConvBlock(prev_channels, current_channels))
-            prev_channels = current_channels
-            if i < self.depth-1:
+            self.down_path_a.append(ConvBlock(prev_channels_a, current_channels))
+
+            prev_channels_a = current_channels
+            if i < self.depth_a-1:
                 # define cross-stitch units
-                self.cs_unit_encoder.append(nn.Parameter(0.5*torch.ones(prev_channels, 2, 2).cuda(), requires_grad=True))
-        self.up_path_seg = nn.ModuleList()
-        self.up_path_reg = nn.ModuleList()
-        for i in reversed(range(self.depth - 1)):
+                self.cs_unit_encoder.append(nn.Parameter(0.5*torch.ones(prev_channels_a, 2, 2).cuda(), requires_grad=True))
+
+        for i in range(self.depth_b):
             if channels_list == None:
                 current_channels = 2 ** i * initial_channels
             else:
                 current_channels = channels_list[i]
-            self.up_path_seg.append(UpBlock(prev_channels+current_channels, current_channels))
-            self.up_path_reg.append(UpBlock(prev_channels+current_channels, current_channels))
-            prev_channels = current_channels
-            self.res_list_seg.append(nn.Conv3d(channels_list[i + 1], out_channels_seg, kernel_size=1))
-            self.res_list_reg.append(nn.Conv3d(channels_list[i + 1], dim, kernel_size=1))
-            # define cross-stitch units
-            self.cs_unit_decoder.append(nn.Parameter(0.5 * torch.ones(prev_channels, 2, 2).cuda(), requires_grad=True))
 
-        self.res_list_seg.append(nn.Conv3d(channels_list[0], out_channels_seg, kernel_size=1))
-        self.res_list_reg.append(nn.Conv3d(channels_list[0], dim, kernel_size=1))
+            if depth_b == 3:
+                self.down_path_b.append(ConvBlock(prev_channels_b, current_channels))
+
+            if depth_b == 4:
+                if i < 2:
+                    self.down_path_b.append(ConvBlock(prev_channels_b, current_channels))
+                elif i == 2:
+                    self.down_path_b.append(ConvBlock(prev_channels_b, current_channels, padding_2=1))
+                elif i == 3:
+                    self.down_path_b.append(ConvBlock(prev_channels_b, current_channels, padding_1=1, padding_2=1))
+
+            prev_channels_b = current_channels
+
+
+        self.up_path_a = nn.ModuleList()
+        self.up_path_b = nn.ModuleList()
+        for i in reversed(range(self.depth_a - 1)):
+            if channels_list == None:
+                current_channels = 2 ** i * initial_channels
+            else:
+                current_channels = channels_list[i]
+            self.up_path_a.append(UpBlock(prev_channels_a+current_channels, current_channels))
+
+            prev_channels_a = current_channels
+            self.res_list_a.append(nn.Conv3d(channels_list[i + 1], channels_out_a, kernel_size=1))
+
+            # define cross-stitch units
+            self.cs_unit_decoder.append(nn.Parameter(0.5 * torch.ones(prev_channels_a, 2, 2).cuda(), requires_grad=True))
+
+        for i in reversed(range(self.depth_b - 1)):
+            if channels_list == None:
+                current_channels = 2 ** i * initial_channels
+            else:
+                current_channels = channels_list[i]
+
+            if depth_b == 3:
+                self.up_path_b.append(UpBlock(prev_channels_b + current_channels, current_channels))
+
+            if depth_b == 4:
+                if i < 2:
+                    self.up_path_b.append(UpBlock(prev_channels_b + current_channels, current_channels))
+                elif i == 2:
+                    self.up_path_b.append(UpBlock(prev_channels_b + current_channels, current_channels, padding_1=1))
+
+
+
+            prev_channels_b = current_channels
+            if depth_b != 4 or i != 2:
+                self.res_list_b.append(nn.Conv3d(channels_list[i + 1], channels_out_b, kernel_size=1))
+
+            
+        self.res_list_a.append(nn.Conv3d(channels_list[0], channels_out_a, kernel_size=1))
+        self.res_list_b.append(nn.Conv3d(channels_list[0], channels_out_b, kernel_size=1))
 
         self.cs_unit_encoder = torch.nn.ParameterList(self.cs_unit_encoder)
         self.cs_unit_decoder = torch.nn.ParameterList(self.cs_unit_decoder)
@@ -112,63 +154,68 @@ class UNet(nn.Module):
 
         return out_a, out_b
 
-    def forward(self, x):
+    def forward(self, x_a, x_b):
 
-        blocks_seg = []
-        blocks_reg = []
-        out_seg = []
-        out_reg = []
-        x_seg = x.clone()
-        x_reg = x.clone()
+        blocks_a = []
+        blocks_b = []
+        out_a = []
+        out_b = []
 
-        for i, (down_seg, down_reg) in enumerate(zip(self.down_path_seg, self.down_path_reg)):
+
+        for i, (down_a, down_b) in enumerate(itertools.zip_longest(self.down_path_a, self.down_path_b)):
+
+            if i == 3:
+                # print('hoi')
+                blocks_b.append(x_b)
+                x_b = F.interpolate(x_b, scale_factor=0.5, mode='trilinear', align_corners=True,
+                                    recompute_scale_factor=False)
+                x_b = down_b(x_b)
+                continue
+            # print(len(self.down_path_b))
             # print(i)
-            # print(x_seg.shape)
-            x_seg = down_seg(x_seg)
-            x_reg = down_reg(x_reg)
-            # print(x_seg.shape)
+            x_a = down_a(x_a)
+            x_b = down_b(x_b)
 
-            if i < self.depth - 1:
+            if i < self.depth_a - 1:
 
-                blocks_seg.append(x_seg)
-                blocks_reg.append(x_reg)
+                blocks_a.append(x_a)
+                blocks_b.append(x_b)
 
-                x_seg = F.interpolate(x_seg, scale_factor=0.5, mode='trilinear', align_corners=True,
+                x_a = F.interpolate(x_a, scale_factor=0.5, mode='trilinear', align_corners=True,
                                       recompute_scale_factor=False)
-                x_reg = F.interpolate(x_reg, scale_factor=0.5, mode='trilinear', align_corners=True,
+                x_b = F.interpolate(x_b, scale_factor=0.5, mode='trilinear', align_corners=True,
                                       recompute_scale_factor=False)
                 # print('shape after pooling:')
-                # print(x_seg.shape)
-                x_seg, x_reg = self.apply_cross_stitch(x_seg, x_reg, self.cs_unit_encoder[i])
+                # print(x_a.shape)
+                x_a, x_b = self.apply_cross_stitch(x_a, x_b, self.cs_unit_encoder[i])
 
-        for i, (up_seg, up_reg, res_seg, res_reg) in enumerate(zip(self.up_path_seg, self.up_path_reg,
-                                                                   self.res_list_seg, self.res_list_reg)):
+
+
+        for i, (up_a, up_b, res_a, res_b) in enumerate(zip(self.up_path_a, self.up_path_b[1:],
+                                                                   self.res_list_a, self.res_list_b)):
             # print(i)
-            if i == 0:
-                out_seg.append(res_seg(x_seg))
-                out_reg.append(res_reg(x_reg))
-                # print('add to res list')
-                # print(res_seg(x_seg).shape)
-                x_seg_before = up_seg(x_seg, blocks_seg[-i - 1])
-                x_reg_before = up_reg(x_reg, blocks_reg[-i - 1])
-                # print(x_seg_before.shape)
-                x_seg, x_reg = self.apply_cross_stitch(x_seg_before, x_reg_before, self.cs_unit_decoder[i])
-            else:
-                out_seg.append(res_seg(x_seg))
-                out_reg.append(res_reg(x_reg))
-                # print('add to res list')
-                # print(res_seg(x_seg).shape)
-                x_seg_before = up_seg(x_seg, blocks_seg[-i - 1])
-                x_reg_before = up_reg(x_reg, blocks_reg[-i - 1])
-                # print(x_seg_before.shape)
-                x_seg, x_reg = self.apply_cross_stitch(x_seg_before, x_reg_before, self.cs_unit_decoder[i])
+            if self.depth_b == 4 and i==0:
+                x_b = self.up_path_b[0](x_b, blocks_b[-i - 1])
+                # continue
 
-        out_seg.append(self.res_list_seg[-1](x_seg))
-        out_reg.append(self.res_list_reg[-1](x_reg))
+
+            out_a.append(res_a(x_a))
+            out_b.append(res_b(x_b))
+            # print('add to res list')
+            # print(res_a(x_a).shape)
+            x_a_before = up_a(x_a, blocks_a[-i - 1])
+            # print(x_b.shape)
+            # print(blocks_b[-i-1].shape)
+            x_b_before = up_b(x_b, blocks_b[-i - 2])
+            # print(x_a_before.shape)
+            x_a, x_b = self.apply_cross_stitch(x_a_before, x_b_before, self.cs_unit_decoder[i])
+
+        out_a.append(self.res_list_a[-1](x_a))
+        out_b.append(self.res_list_b[-1](x_b))
         # print('add to res list')
-        # print(self.res_list_seg[-1](x_seg).shape)
+        # print(self.res_list_a[-1](x_a).shape)
 
-        return out_seg, out_reg
+        return out_a, out_b
 
 
 # class ConvBlock(nn.Module):

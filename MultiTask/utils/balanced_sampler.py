@@ -70,9 +70,11 @@ def balanced_spatial_coordinates(n_samples, img_spatial_size, win_spatial_size, 
     flatten_map = cropped_map.flatten()
     # unique_labels = [1] # use if only dose
     unique_labels = np.unique(flatten_map)[1:]
+    # print(unique_labels)
 
     # system parameter?
     class_probs = [1.0 / len(unique_labels)] * len(unique_labels)
+
     # label_counts = np.random.multinomial(n_samples, class_probs)
     label_counts = np.floor(np.asarray(class_probs)*n_samples).astype(int)
     # print(label_counts)
@@ -107,7 +109,12 @@ def balanced_spatial_coordinates(n_samples, img_spatial_size, win_spatial_size, 
             middle_coords[sample_count, :N_SPATIAL] = np.unravel_index(sample, cropped_map.shape)[:N_SPATIAL]
             sample_count += 1
 
+        # print(middle_coords)
+
+
     # re-shift coords due to the crop
     half_win = np.floor(win_spatial_size / 2).astype(np.int32)
     middle_coords[:, :N_SPATIAL] = middle_coords[:, :N_SPATIAL] + half_win[:N_SPATIAL]
+    # middle_coords = np.array([[30, 247, 83], [34, 255, 245], [32, 266, 239], [49, 279, 232]])
+    # print(middle_coords)
     return middle_coords

@@ -61,7 +61,7 @@ class evaluation_seg(object):
                         patient_name = file.split('/')[-3]
                         visit_name = file.split('/')[-2]
 
-                        print(patient_name, visit_name)
+
 
                         groundtruth_segmentation = sitk.ReadImage(file)
                         groundtruth_bladder = sitk.BinaryThreshold(groundtruth_segmentation, lowerThreshold=1,

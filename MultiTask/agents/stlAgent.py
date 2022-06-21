@@ -516,10 +516,15 @@ class stlAgent(BaseAgent):
                 mlabel_padded = np.pad(mlabel, padding, mode='constant', constant_values=mlabel.min())
                 mdose_padded = np.pad(mdose, padding, mode='constant', constant_values=mlabel.min())
                 f_bshape = fimage_padded.shape[1:-1]  # 162x552x552
-                striding = (list(np.maximum(1, np.array(op_shape) // 2)) if all(out_diff == 0) else op_shape)
+                # striding = (list(np.maximum(1, np.array(op_shape) // 2)) if all(out_diff == 0) else op_shape)
+
+                if True:
+                    striding = (list(np.maximum(1, np.array(op_shape) // 2)) if all(out_diff == 0) else list(np.array(op_shape) // 2))
+
                 out_fimage_dummies = np.zeros(inp_shape)  # 1x1x122x512x512
                 out_label_dummies = np.zeros(inp_shape)   # 1x1x122x512x512
                 out_dose_dummies = np.zeros(inp_shape)    # 1x1x122x512x512
+                inference_times = np.zeros(inp_shape)
                 out_dvf_dummies = np.zeros([inp_shape[0], inp_shape[1], inp_shape[2], inp_shape[3], 3])  # 1x1x122x512x512x3
 
                 sw = SlidingWindow(f_bshape, pl_bshape, striding=striding)
@@ -587,14 +592,21 @@ class stlAgent(BaseAgent):
 
                     elif self.args.network == 'Dose':
                         dose = F.relu(res['logits_high'])
-                        out_dose_dummies[tuple(out_slicer)] = np.transpose(dose.cpu().numpy(), (0, 2, 3, 4, 1)) #BxDxWxHxC
+                        out_dose_dummies[tuple(out_slicer)] = out_dose_dummies[tuple(out_slicer)] + np.transpose(dose.cpu().numpy(), (0, 2, 3, 4, 1)) #BxDxWxHxC
+                        inference_times[tuple(out_slicer)] = inference_times[tuple(out_slicer)] + np.ones_like(
+                                                                np.transpose(dose.cpu().numpy(), (0, 2, 3, 4, 1)))
 
+                    #(!!!)
                     if done:
                         break
 
 
                 save_dir = os.path.join(self.args.output_dir, dataset, inference_cases[i].split('/')[-3],
                                         inference_cases[i].split('/')[-2])
+                # save_dir = os.path.join('/exports/lkeb-hpc/tlandman/Thesis/temp/predicted_contours',
+                #                         inference_cases[i].split('/')[-3],
+                #                         inference_cases[i].split('/')[-2])
+
                 if not os.path.exists(save_dir):
                     os.makedirs(save_dir)
 
@@ -634,6 +646,7 @@ class stlAgent(BaseAgent):
                     sitk.WriteImage(dvf_itk, os.path.join(save_dir, 'DVF.mha'))
 
                 if self.args.network == 'Dose':
+                    out_dose_dummies = out_dose_dummies / inference_times
                     fdose_itk = sitk.GetImageFromArray(np.squeeze(out_dose_dummies.astype(np.float32)))
                     fdose_itk.SetOrigin(im_itk.GetOrigin())
                     # flabel_itk.SetSpacing([1., 1., 1.])

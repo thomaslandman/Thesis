@@ -7,8 +7,8 @@ setting = dict()
 setting['cluster_manager'] = 'Slurm'
 setting['NumberOfGPU'] = 1
 setting['cluster_MemPerCPU'] = 7500
-setting['cluster_NumberOfCPU'] = 4             # Number of CPU per job
-setting['cluster_NodeList'] = 'res-hpc-lkeb04'  # ['res-hpc-gpu01','res-hpc-gpu02','res-hpc-lkeb03',---,'res-hpc-lkeb07']
+setting['cluster_NumberOfCPU'] = 4                  # Number of CPU per job
+setting['cluster_NodeList'] = 'res-hpc-lkeb05'      # ['res-hpc-gpu01','res-hpc-gpu02','res-hpc-lkeb03',---,'res-hpc-lkeb07']
 
 
 if 'lkeb' in setting['cluster_NodeList']:
@@ -104,11 +104,46 @@ experiments_dict['doseprediction_r'] ={'model_name':'cs_dose', 'task':'Single-Ta
 experiments_dict['w-net_b']         ={'model_name':'w-net_segdose', 'task':'Single-Task', 'agent':'stlAgent_2', 'network':'w-net',
                                     'input':'Sm_If_Dm', 'task_ids': ['w-net'], 'num_featurmaps': None}
 
+experiments_dict['registration_c'] ={'model_name':'Reg_good', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Reg',
+                                     'input':'If_Im', 'task_ids': ['reg'], 'num_featurmaps': [23, 45, 91], 'num_classes':3}
 
-exp = experiments_dict['registration_b']
+experiments_dict['cross-stitch_c']  ={'model_name':'CS', 'task':'Multi-Task', 'agent':'mtlAgent', 'network':'CS_3',
+                                    'weight':'equal', 'input_seg':'Dose', 'input_reg':'Reg', 'loss_seg':'DSC', 'loss_reg':'NCC_DSCWarp',
+                                    'input':'If_Im_Sm', "task_ids": ["seg", "reg", "seg_reg"], 'num_featurmaps': [23, 45, 91], 'num_classes':5}
+
+experiments_dict['doseprediction_s'] ={'model_name':'aa_dose_no', 'task':'Single-Task', 'agent':'goodAgent', 'network':'Dose',
+                                     'input':'If_Im_Sm_Dm', 'task_ids': ['dose'], 'num_featurmaps': [23, 45, 90, 180]}
+
+experiments_dict['doseprediction_t'] ={'model_name':'best_mid_dose', 'task':'Single-Task', 'agent':'goodAgent', 'network':'Dose',
+                                     'input':'If_Im_Sm_Dm', 'task_ids': ['dose'], 'num_featurmaps': [23, 45, 90, 180]}
+
+experiments_dict['cross-stitch_d'] ={'model_name':'seg_dose', 'task':'Single-Task', 'agent':'goodAgent', 'network':'CS_seg_dose',
+                                     'input':'If_Im_Sm_Dm', 'task_ids': ['dose'], 'num_featurmaps': [16, 32, 64, 128]}
+
+experiments_dict['cross-stitch_e'] ={'model_name':'reg_dose', 'task':'Single-Task', 'agent':'goodAgent', 'network':'CS_reg_dose',
+                                     'input':'If_Im_Sm_Dm', 'task_ids': ['dose'], 'num_featurmaps': [16, 32, 64, 128]}
+
+experiments_dict['doseprediction_u'] ={'model_name':'Dose_Deep_no_weights_good', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
+                                     'input':'Sf_If_Dm_Ma', 'task_ids': ['dose'], 'num_featurmaps': [32, 64, 128, 256], 'num_classes':4}
+
+experiments_dict['doseprediction_v'] ={'model_name':'aa_dose', 'task':'Single-Task', 'agent':'stlAgent', 'network':'Dose',
+                                     'input':'Sf_If_Dm_Ma', 'task_ids': ['dose'], 'num_featurmaps': [32, 64, 128, 256], 'num_classes':4}
+
+experiments_dict['doseprediction_w'] ={'model_name':'final_w_net', 'task':'Single-Task', 'agent':'goodAgent', 'network':'Dose',
+                                     'input':'If_Sf_Ma_Dm', 'task_ids': ['dose'], 'num_featurmaps': [23, 45, 90, 180]}
+
+experiments_dict['doseprediction_x'] ={'model_name':'final_w_net_400', 'task':'Single-Task', 'agent':'goodAgent', 'network':'Dose',
+                                     'input':'If_Sf_Ma_Dm', 'task_ids': ['dose'], 'num_featurmaps': [23, 45, 90, 180]}
+
+experiments_dict['doseprediction_y'] ={'model_name':'final_w_net_250', 'task':'Single-Task', 'agent':'goodAgent', 'network':'Dose',
+                                     'input':'If_Sf_Ma_Dm', 'task_ids': ['dose'], 'num_featurmaps': [23, 45, 90, 180]}
+
+
+
+exp = experiments_dict['doseprediction_y']
 exp['is_debug'] = False
-is_local = False
-exp['mode'] = 'train'            #['train', 'inference', 'eval']
+is_local = True
+exp['mode'] = 'eval'            #['train', 'inference', 'eval']
 
 base_json_script = '/exports/lkeb-hpc/tlandman/Thesis/MultiTask/configs/base_args.json'
 script_address = '/exports/lkeb-hpc/tlandman/Thesis/MultiTask/main.py'
