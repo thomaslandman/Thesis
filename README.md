@@ -1,2 +1,2 @@
 # Thesis
-This will be the repository in which I will order all my code nicely.
+This repository contains most of the codes used for the master thesis project for predicting dose distributions and predicted contours on CT scans. The report can be found in the TU Delft repository under the name 'Multi-Task Learning for Optimal Dose and Contour Prediction in Adaptive Proton Therapy' or by sending me an e-mail. Most of the codes are adapted from M. Elbially, for his paper called: A Cross-Stitch Architecture for Joint Registration and Segmentation in Adaptive Radiotherapy. If you have any questions about the code don't hesitate to send a mail to thomaslandman97@gmail.com. 
